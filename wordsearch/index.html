@@ -1290,6 +1290,86 @@ body.pv-flat #previewPages { transform:none !important; margin:0 auto !important
 .ws-live .preview-toolbar { display:flex !important; flex-wrap:wrap; gap:10px; }
 .ws-live .preview-tool-group { flex:1 1 auto; }
 .ws-live .preview-tool-group .row { flex-wrap:wrap; gap:8px; }
+/* the redesigned steps (2026-11-17) */
+.st { padding:22px 24px 24px !important; }
+.st::before, .ws-live .preview-section::before { display:none !important; }
+.ws-live .preview-section { padding:22px 24px 24px !important; }
+.ws-live .preview-section .st-num { background:#1B1E3C; }
+.ws-live .preview-tool-label { display:none; }
+.ws-live .preview-tool-group { background:none !important; border:0 !important; padding:0 !important; }
+.st-head { display:flex; align-items:center; gap:14px; margin:0 0 16px; }
+.st-head h2 { margin:0 !important; font-size:24px !important; }
+.st-head p { margin:2px 0 0; color:#5A6185; font-size:15px; }
+.st-head > div { flex:1; min-width:0; }
+.st-num { flex:none; width:38px; height:38px; border-radius:50%; display:grid; place-items:center; background:#2F6BFF; color:#fff; font:600 19px Fredoka, system-ui, sans-serif; }
+.st:nth-of-type(even) .st-num { background:#FFC83D; color:#1B1E3C; }
+button.st-reset { background:none !important; color:#5A6185 !important; border:0 !important; padding:6px 8px !important; font-size:14px; font-weight:700; box-shadow:none !important; text-decoration:underline; text-underline-offset:3px; }
+button.st-reset:hover { color:#2F6BFF !important; filter:none; }
+.st-box { border:1px solid #E3D9CC; border-radius:14px; padding:14px; background:#fff; margin:0 0 12px; }
+.st-soft { background:#FBF8F2; }
+.st-row { display:flex; align-items:center; gap:8px; }
+.st-wrap { flex-wrap:wrap; }
+.st-between { justify-content:space-between; margin-bottom:8px; }
+.st-label { display:flex; align-items:center; gap:8px; font-weight:800 !important; font-size:15px !important; color:#1B1E3C !important; margin:0 0 8px; }
+.st-opt { font-weight:600; color:#5A6185; font-size:13px; }
+.st-pill { display:inline-block; background:#EEF3FF; color:#2F6BFF; border-radius:999px; padding:2px 10px; font-size:13px; font-weight:800; }
+.st-pill #wordCount { color:inherit !important; }
+.st-help { color:#5A6185; font-size:13px; line-height:1.45; margin-top:6px; }
+.st-help:empty { display:none; }
+button.st-text { background:none !important; color:#2F6BFF !important; border:0 !important; padding:4px 8px !important; font-size:14px; box-shadow:none !important; }
+.st #wordBox { min-height:180px; font-size:16px; }
+.st-topic { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.st-topic .field { gap:0; }
+.st-grow { flex:1 1 180px; min-width:0; }
+.st-count { flex:0 0 84px; }
+.st-sources { border:0 !important; background:none !important; padding:0 !important; margin-top:10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.st-sources:has(#selectedSources:empty) { display:none; }
+.st-sources .st-help { margin:0; }
+.st-field { margin:0 0 18px; }
+.st-field:last-child { margin-bottom:0; }
+.st-two { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:0 0 18px; }
+.st-two .field { gap:0; }
+.st-hide { display:none !important; }
+.seg { display:inline-flex; background:#F3EEE6; border-radius:999px; padding:4px; gap:4px; }
+.seg button { background:transparent !important; color:#1B1E3C !important; border:0 !important; padding:9px 16px !important; font-weight:800; box-shadow:none !important; display:flex; align-items:center; gap:8px; }
+.seg button.on { background:#fff !important; color:#2F6BFF !important; box-shadow:0 1px 4px rgba(60,40,20,.15) !important; }
+.seg button:hover { filter:none; }
+.seg3 { display:grid; grid-template-columns:repeat(3,1fr); border-radius:16px; width:100%; }
+.seg3 button { flex-direction:column; gap:1px; border-radius:12px !important; padding:10px 8px !important; }
+.seg3 button small { font-weight:600; font-size:12px; color:#5A6185; }
+.st-size input { width:76px !important; padding:9px 10px !important; text-align:center; }
+.st-size span { color:#5A6185; font-weight:700; font-size:14px; }
+.st-size { transition:opacity .15s; }
+.pill { display:inline-flex; cursor:pointer; user-select:none; }
+.pill input { position:absolute; opacity:0; width:1px; height:1px; pointer-events:none; }
+.pill span { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:999px; border:1.5px solid #E3D9CC; background:#fff; color:#5A6185; font-weight:800; font-size:15px; }
+.pill span::before { content:"＋"; font-weight:800; color:#B9AE9F; }
+.pill input:checked + span { background:#2F6BFF; border-color:#2F6BFF; color:#fff; }
+.pill input:checked + span::before { content:"✓"; color:#fff; }
+.pill input:focus-visible + span { outline:3px solid rgba(47,107,255,.35); outline-offset:2px; }
+.tiles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.tiles button { background:#fff !important; color:#1B1E3C !important; border:1.5px solid #E3D9CC !important; border-radius:14px !important; padding:10px 6px 8px !important; display:flex; flex-direction:column; align-items:center; gap:4px; box-shadow:none !important; min-height:84px; }
+.tiles button b { font:700 26px/1 Nunito, system-ui, sans-serif; min-height:34px; display:flex; align-items:center; justify-content:center; }
+.tiles button span { font-size:13px; font-weight:700; color:#5A6185; }
+.ws-steps .tiles button.on, .ws-steps .tiles button.on:hover { border:2px solid #2F6BFF !important; background:#EEF3FF !important; padding:9px 5px 7px !important; }
+.ws-steps .tiles button.on span { color:#2F6BFF; }
+.tiles button:hover { border-color:#2F6BFF !important; filter:none; }
+.tile-asl { font-family:'CGasl', sans-serif !important; font-weight:400 !important; font-size:30px !important; }
+.tile-braille { font-family:'BrailleFull', sans-serif !important; font-weight:400 !important; }
+.tile-cute canvas { height:34px; width:auto; display:none; }
+.tile-cute.ready canvas { display:block; } .tile-cute.ready i { display:none; }
+.tile-cute i { font-style:normal; }
+.pg { display:inline-block; border:2px solid currentColor; border-radius:3px; }
+.pg-tall { width:13px; height:17px; } .pg-wide { width:17px; height:13px; }
+.st-more { margin-top:4px !important; background:#FBF8F2 !important; }
+.st-more summary { font-weight:800 !important; color:#1B1E3C !important; }
+.st-rename { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 14px; }
+.st-rename label { display:flex; flex-direction:column; gap:4px; font-size:13px !important; font-weight:800; color:#5A6185 !important; }
+.student-pills { margin-bottom:12px; }
+@media (max-width:620px) { .st-two, .st-rename { grid-template-columns:1fr; } .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); } .st { padding:18px 16px !important; } }
+/* printed page: the student lines line up in columns (sfGrid) */
+.sf-grid { display:grid; gap:14px 26px; }
+.sf-grid > div { min-width:0; }
 </style>
 </head>
 <body>
@@ -1305,313 +1385,162 @@ body.pv-flat #previewPages { transform:none !important; margin:0 auto !important
     </div>
 
     <div class="ws-layout"><div class="ws-steps">
-    <section class="section">
-      <div class="section-heading-row">
-        <h2>1. Choose Your Words</h2>
-        <button class="section-reset-button" type="button" onclick="resetWordsSection()">Reset Choose Your Words</button>
-      </div>
-      <p class="hint">Use one method or combine several. Every word ends up in the editable puzzle list below.</p>
+    <!-- 2026-11-17 redesign (Colleen: "reconsider everything about how each of these sections is designed"): short steps, the main
+         thing first, choices as buttons and tiles instead of long menus; the original menus and boxes are still here (some hidden) so
+         every setting works as before. syncUi() keeps the buttons and tiles in step with them. -->
+    <section class="section st">
+      <div class="st-head"><span class="st-num">1</span><div><h2>Words</h2><p>One word or phrase per line.</p></div>
+        <button class="st-reset" type="button" onclick="resetWordsSection()">Reset</button></div>
 
-      <div class="section-guide">
-        Choose random words from a topic, type or paste your own, or mix both in the same puzzle.
-      </div>
-
-      <div class="source-methods">
-        <div class="source-card" style="display:none">
-          <div class="source-card-header">
-            <div class="source-card-number">A</div>
-            <div>
-              <h3>Use a Saved List</h3>
-              <p>Load one of your own reusable vocabulary lists.</p>
-            </div>
-          </div>
-          <div class="field">
-            <label>Choose a Saved List</label>
-            <select id="savedListSelect"><option value="">Choose a saved list…</option></select>
-          </div>
-          <div class="source-action saved-list-actions">
-            <button id="addSavedListBtn" class="secondary" type="button" onclick="addSavedList()">Load Selected List</button>
-            <button class="mint" type="button" onclick="openNewSavedList()">Create New Saved List</button>
-            <button class="danger-button" type="button" onclick="deleteSelectedSavedList()">Delete Selected List</button>
-          </div>
-          <div id="savedListMessage" class="source-inline-message" role="status"></div>
+      <div class="st-box">
+        <div class="st-row st-between">
+          <label for="wordBox" class="st-label">Your words <span class="st-pill"><span id="wordCount">0</span> words</span></label>
+          <div class="st-row"><button class="st-text" type="button" onclick="undoWords()">↶ Undo</button><button class="st-text" type="button" onclick="clearWorkingWords()">Clear</button></div>
         </div>
-
-        <div class="source-card">
-          <div class="source-card-header">
-            <div class="source-card-number">A</div>
-            <div>
-              <h3>Generate by Topic</h3>
-              <p>Choose a built-in category, optionally narrow it by subcategory, and tell the app how many random words to use.</p>
-            </div>
-          </div>
-          <div class="grid3">
-            <div class="field">
-              <label>Topic or Word Bank</label>
-              <select id="categorySelect" onchange="updateSubcategoryOptions()"><option value="">Choose a category…</option></select>
-            </div>
-            <div class="field" id="subcategoryField" style="display:none">
-              <label>Subcategory</label>
-              <select id="subcategorySelect" onchange="updateTopicWordLimit()">
-                <option value="">All Subcategories</option>
-              </select>
-              <div class="control-help">Optional. Narrow the topic, or leave this on All Subcategories.</div>
-            </div>
-            <div class="field">
-              <label>Number of Words</label>
-              <input id="randomCount" type="number" min="1" step="1" value="10" placeholder="Example: 10" oninput="validateTopicWordCount(false)">
-              <div id="topicAvailability" class="control-help"></div>
-            </div>
-          </div>
-          <div class="source-action">
-            <button class="secondary" onclick="addRandomCategory()">Generate & Add Words</button>
-          </div>
-          <div id="categoryMessage" class="source-inline-message" role="status"></div>
-        </div>
-      </div>
-
-      <div class="source-divider-label">Or type / paste your own words</div>
-
-      <div class="working-list-card">
-        <div class="working-list-header">
-          <div class="working-list-title">
-            <div class="source-card-number">B</div>
-            <div>
-              <h3>Type, Paste, or Edit Words</h3>
-              <p>
-                Type directly, paste a list, or edit words added from A.
-                One line equals one puzzle entry. You can still paste a comma-separated list; WordSearch Studio will convert it to separate lines. Commas already inside a line stay part of that title or phrase.
-              </p>
-            </div>
-          </div>
-          <div class="row">
-            <button class="secondary" onclick="undoWords()">Undo</button>
-            <button class="secondary" onclick="clearWorkingWords()">Clear</button>
-          </div>
-        </div>
-
-        <textarea id="wordBox" class="resizable-word-box" placeholder="Type one word or phrase per line, or paste a comma-separated list." oninput="workingWordsChanged()" onpaste="handleWordBoxPaste(event)"></textarea>
-        <div class="control-help word-entry-note">
-          One line = one puzzle entry. For comma-separated paste containing a title with a comma, put that title in quotation marks.
-        </div>
-
-        <div class="row" style="justify-content:space-between;margin-top:10px;align-items:flex-start">
-          <div>
-            <strong style="color:var(--blue)">Words in This Puzzle: <span id="wordCount">0</span></strong>
-            <div class="mini">You can change this list at any time before generating.</div>
-          </div>
-          
-        </div>
-
+        <textarea id="wordBox" class="resizable-word-box" placeholder="Type or paste your words here, one per line.&#10;&#10;HELLO&#10;THANK YOU&#10;FAMILY" oninput="workingWordsChanged()" onpaste="handleWordBoxPaste(event)"></textarea>
+        <div class="st-help">A list with commas works too. Keep a title with a comma together by putting it in quotation marks.</div>
         <div id="wordWarnings" class="warning"></div>
       </div>
 
-      <div class="selected-source-wrap">
-        <label>Words Added From</label>
-        <div class="control-help">
-          A record of which built-in categories contributed words.
+      <div class="st-box st-soft">
+        <div class="st-label">Add words from a topic</div>
+        <div class="st-topic">
+          <div class="field st-grow"><select id="categorySelect" aria-label="Topic" onchange="updateSubcategoryOptions()"><option value="">Choose a topic…</option></select></div>
+          <div class="field st-grow" id="subcategoryField" style="display:none">
+            <select id="subcategorySelect" aria-label="Part of the topic" onchange="updateTopicWordLimit()"><option value="">All Subcategories</option></select>
+          </div>
+          <div class="field st-count"><input id="randomCount" type="number" min="1" step="1" value="10" aria-label="How many words" oninput="validateTopicWordCount(false)"></div>
+          <button class="secondary" type="button" onclick="addRandomCategory()">Add words</button>
         </div>
-        <div id="selectedSources" class="chips" style="margin-top:9px"></div>
+        <div id="topicAvailability" class="st-help"></div>
+        <div id="categoryMessage" class="source-inline-message" role="status"></div>
+        <div class="selected-source-wrap st-sources"><span class="st-help">Added from:</span> <div id="selectedSources" class="chips"></div></div>
+      </div>
+
+      <div class="source-card" style="display:none">
+        <select id="savedListSelect"><option value="">Choose a saved list…</option></select>
+        <button id="addSavedListBtn" type="button" onclick="addSavedList()">Load Selected List</button>
+        <div id="savedListMessage" class="source-inline-message" role="status"></div>
       </div>
     </section>
 
-    <section class="section">
-      <div class="section-heading-row">
-        <h2>2. Build the Puzzle</h2>
-        <button class="section-reset-button" type="button" onclick="resetPuzzleSection()">Reset Build the Puzzle</button>
-      </div>
-      <p class="hint">Choose the grid size and the directions in which words may be hidden.</p>
-      <div class="section-guide">
-        <strong>Auto Size</strong> chooses a grid large enough for your word list.
-        <strong>Manual</strong> lets you choose the exact number of rows and columns.
-        Difficulty presets control word direction, but you can customize the directions yourself.
-      </div>
+    <section class="section st">
+      <div class="st-head"><span class="st-num">2</span><div><h2>Puzzle</h2><p>How big it is and which ways words can run.</p></div>
+        <button class="st-reset" type="button" onclick="resetPuzzleSection()">Reset</button></div>
 
-      <div class="grid3">
-        <div class="field">
-          <label>Grid Size Mode</label>
-          <div class="control-help">Auto chooses a size for you. Manual lets you set rows and columns.</div>
-          <select id="gridMode" onchange="gridModeChanged()">
-            <option value="Auto" selected>Auto</option><option value="Manual">Manual</option>
-          </select>
+      <div class="st-field">
+        <div class="st-label">Size</div>
+        <div class="st-row st-wrap">
+          <div class="seg" data-for="gridMode"><button type="button" data-v="Auto">Fit my words</button><button type="button" data-v="Manual">Choose a size</button></div>
+          <div class="st-row st-size manual-grid"><input id="rows" type="number" min="8" max="30" value="15" aria-label="Rows"><span>rows ×</span><input id="cols" type="number" min="8" max="30" value="15" aria-label="Columns"><span>columns</span></div>
         </div>
-        <div class="field manual-grid">
-          <label>Rows</label><input id="rows" type="number" min="8" max="30" value="15">
-          <div class="control-help">How many squares tall the puzzle will be.</div>
-        </div>
-        <div class="field manual-grid">
-          <label>Columns</label><input id="cols" type="number" min="8" max="30" value="15">
-          <div class="control-help">How many squares wide the puzzle will be.</div>
-        </div>
+        <select id="gridMode" class="st-hide" onchange="gridModeChanged()"><option value="Auto" selected>Auto</option><option value="Manual">Manual</option></select>
       </div>
 
-      <div class="divider"></div>
+      <div class="st-field">
+        <div class="st-label">Difficulty</div>
+        <div class="seg seg3" data-for="difficulty"><button type="button" data-v="Easy">Easy<small>across, down</small></button><button type="button" data-v="Medium">Medium<small>+ diagonal</small></button><button type="button" data-v="Hard">Hard<small>+ backward</small></button></div>
+        <select id="difficulty" class="st-hide" onchange="applyDifficultyPreset()"><option>Easy</option><option selected>Medium</option><option>Hard</option></select>
+      </div>
 
-      <div class="grid2">
-        <div class="field">
-          <label>Difficulty Preset</label>
-          <div class="control-help">Easy: forward horizontal/vertical. Medium: adds diagonals. Hard: also allows backwards words.</div>
-          <select id="difficulty" onchange="applyDifficultyPreset()">
-            <option>Easy</option><option selected>Medium</option><option>Hard</option>
-          </select>
+      <div class="st-field">
+        <div class="st-label">Words can run</div>
+        <div class="st-row st-wrap">
+          <label class="pill"><input id="dirH" type="checkbox" checked onchange="directionChanged()"><span>→ Across</span></label>
+          <label class="pill"><input id="dirV" type="checkbox" checked onchange="directionChanged()"><span>↓ Down</span></label>
+          <label class="pill"><input id="dirD" type="checkbox" checked onchange="directionChanged()"><span>↘ Diagonal</span></label>
+          <label class="pill"><input id="dirB" type="checkbox" onchange="directionChanged()"><span>← Backward</span></label>
         </div>
-        <div class="field">
-          <label>Allowed Word Directions</label>
-          <div class="control-help">
-            Every selected direction is guaranteed to be used by at least one word.
-            Backward means a word is actually read in reverse—not merely placed on a different diagonal.
-          </div>
-          <div class="row">
-            <div class="toggle"><input id="dirH" type="checkbox" checked onchange="directionChanged()"><label for="dirH">Horizontal</label></div>
-            <div class="toggle"><input id="dirV" type="checkbox" checked onchange="directionChanged()"><label for="dirV">Vertical</label></div>
-            <div class="toggle"><input id="dirD" type="checkbox" checked onchange="directionChanged()"><label for="dirD">Diagonal</label></div>
-            <div class="toggle"><input id="dirB" type="checkbox" onchange="directionChanged()"><label for="dirB">Backward</label></div>
-          </div>
-          <div id="customDirectionNote" class="mini"></div>
-        </div>
+        <div id="customDirectionNote" class="st-help"></div>
       </div>
     </section>
 
-    <section class="section">
-      <div class="section-heading-row">
-        <h2>3. Page & Letter Appearance</h2>
-        <button class="section-reset-button" type="button" onclick="resetAppearanceSection()">Reset Page & Letter Appearance</button>
-      </div>
-      <p class="hint">Control how the puzzle letters, word bank, title, and page itself will look.</p>
-      <div class="section-guide">
-        The <strong>Puzzle Letter Style</strong> changes the letters inside the grid.
-        The <strong>Word Bank Text Style</strong> changes only the list of words under the puzzle.
-        These can be different—for example, ASL handshapes in the grid with normal English in the word bank.
+    <section class="section st">
+      <div class="st-head"><span class="st-num">3</span><div><h2>Page</h2><p>What the printed page says and how the letters look.</p></div>
+        <button class="st-reset" type="button" onclick="resetAppearanceSection()">Reset</button></div>
+
+      <div class="st-two">
+        <div class="field"><label class="st-label" for="title">Title</label><input id="title" placeholder="Unit 2: Family Signs"></div>
+        <div class="field"><label class="st-label" for="subtitle">Subtitle <span class="st-opt">optional</span></label><input id="subtitle" placeholder="ASL 1, Period 3"></div>
       </div>
 
-      <div class="grid3">
-        <div class="field">
-          <label>Puzzle Letter Style</label>
-          <div class="control-help">Changes the characters shown inside the puzzle grid.</div>
-          <select id="gridDisplay">
-            <option>UPPERCASE</option><option>lowercase</option><option value="ASL Fingerspelling">ASL - Gallaudet</option><option value="ASL Cute">ASL - Cute</option>
-            <option>Braille — Full Cell</option><option>Braille — Dots Only</option>
-          </select>
+      <div class="st-field">
+        <div class="st-label">Letters in the puzzle</div>
+        <div class="tiles" data-for="gridDisplay">
+          <button type="button" data-v="UPPERCASE"><b>ABC</b><span>Capitals</span></button>
+          <button type="button" data-v="lowercase"><b>abc</b><span>Lowercase</span></button>
+          <button type="button" data-v="ASL Fingerspelling"><b class="tile-asl">ABC</b><span>ASL - Gallaudet</span></button>
+          <button type="button" data-v="ASL Cute"><b class="tile-cute"><canvas width="192" height="64" aria-hidden="true"></canvas><i>🤟</i></b><span>ASL - Cute</span></button>
+          <button type="button" data-v="Braille — Full Cell"><b class="tile-braille">abc</b><span>Braille</span></button>
+          <button type="button" data-v="Braille — Dots Only"><b>⠁⠃⠉</b><span>Braille dots</span></button>
         </div>
-        <div class="field">
-          <label>Word Bank Text Style</label>
-          <div class="control-help">Changes how the words-to-find list is displayed under the puzzle.</div>
+        <select id="gridDisplay" class="st-hide">
+          <option>UPPERCASE</option><option>lowercase</option><option value="ASL Fingerspelling">ASL - Gallaudet</option><option value="ASL Cute">ASL - Cute</option>
+          <option>Braille — Full Cell</option><option>Braille — Dots Only</option>
+        </select>
+      </div>
+
+      <div class="st-two">
+        <div class="field"><label class="st-label" for="bankDisplay">Word list under the puzzle</label>
           <select id="bankDisplay">
-            <option>As Entered</option><option>UPPERCASE</option><option>lowercase</option><option value="ASL Fingerspelling">ASL - Gallaudet</option>
-            <option>Braille — Full Cell</option><option>Braille — Dots Only</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Accent Handling</label>
-          <div class="control-help">Preserve keeps letters such as ñ or é. Plain converts them to n or e in the puzzle. Accented filler is used only when the selected words actually contain accented letters.</div>
-          <select id="accentMode">
-            <option value="Preserve">Preserve accents</option>
-            <option value="Plain">Convert to plain letters</option>
-          </select>
-        </div>
+            <option value="As Entered">As I typed them</option><option value="UPPERCASE">CAPITALS</option><option value="lowercase">lowercase</option><option value="ASL Fingerspelling">ASL - Gallaudet</option>
+            <option value="Braille — Full Cell">Braille</option><option value="Braille — Dots Only">Braille dots</option>
+          </select></div>
+        <div class="field"><label class="st-label" for="bankHeading">Word list heading</label><input id="bankHeading" value="Word Bank" placeholder="Words to Find"></div>
       </div>
 
-      <div class="divider"></div>
-      <div class="grid2">
-        <div class="field"><label>Puzzle Title</label><input id="title" placeholder="Puzzle Title">
-        <div class="control-help">Optional. Appears centered at the top of both pages.</div></div>
-        <div class="field"><label>Puzzle Subtitle</label><input id="subtitle" placeholder="Puzzle Subtitle (Unit #, Chapter #, Topic, etc.)">
-        <div class="control-help">Optional. Useful for a unit, chapter, topic, class period, or review label.</div></div>
-      </div>
-      <div class="grid2" style="margin-top:16px">
-        <div class="field">
-          <label>Page Orientation</label>
-          <div class="control-help">Portrait is the default. Switch to landscape when a larger grid needs more horizontal space.</div>
-          <select id="orientation"><option>Portrait</option><option>Landscape</option></select>
-        </div>
-        <div class="field">
-          <label>Word Bank Heading</label>
-          <div class="control-help">This label appears centered on the word-bank box. Try “Word Bank” or “Words to Find.”</div>
-          <input id="bankHeading" value="Word Bank" placeholder="Words to Find">
-          <div class="mini">Change this to anything you prefer, such as “Words to Find.”</div>
-        </div>
+      <div class="st-field">
+        <div class="st-label">Paper</div>
+        <div class="seg" data-for="orientation"><button type="button" data-v="Portrait"><span class="pg pg-tall"></span>Tall</button><button type="button" data-v="Landscape"><span class="pg pg-wide"></span>Wide</button></div>
+        <select id="orientation" class="st-hide"><option>Portrait</option><option>Landscape</option></select>
       </div>
 
-      <details class="advanced">
-        <summary>Advanced Puzzle Safety</summary>
+      <details class="advanced st-more">
+        <summary>More options</summary>
         <div class="advanced-body">
-          <div class="field">
-            <label>Avoid Additional Letter Sequences (Optional)</label>
-            <input id="extraBlocked" placeholder="Type extra sequences separated by commas">
-            <div class="mini">
-              WordSearch Studio already prevents accidental prohibited strings using its master safety list.
-              Use this only when you want one particular puzzle to avoid an extra letter sequence—for example, a student's name
-              or another word you do not want to appear accidentally in the filler letters. This does not remove intentionally entered puzzle words.
-              For permanent changes to the master safety list, edit the <strong>Blocked_Words</strong> tab in the original Google Sheet.
-            </div>
-          </div>
+          <div class="field"><label class="st-label" for="accentMode">Accented letters (ñ, é)</label>
+            <select id="accentMode"><option value="Preserve">Keep the accents</option><option value="Plain">Change to plain letters (n, e)</option></select></div>
+          <div class="field" style="margin-top:12px"><label class="st-label" for="extraBlocked">Letters that must not show up by accident</label>
+            <input id="extraBlocked" placeholder="For example, a student's name. Separate with commas.">
+            <div class="st-help">Rude words are already kept out. This only affects the filler letters, never your own words.</div></div>
         </div>
       </details>
     </section>
 
-    <section class="section">
-      <div class="section-heading-row">
-        <h2>4. Student Information</h2>
-        <button class="section-reset-button" type="button" onclick="resetStudentSection()">Reset Student Information</button>
-      </div>
-      <p class="hint">Choose which information lines appear above the puzzle.</p>
-      <div class="section-guide">
-        Check a field to show it on the student page. Edit the text beside it to rename the field—for example,
-        change <strong>Period</strong> to <strong>Block</strong>. Only the lines you check are printed, packed together to leave the most room for the puzzle. Name gets the longest line; Date and Period get short ones.
+    <section class="section st">
+      <div class="st-head"><span class="st-num">4</span><div><h2>Student lines</h2><p>Lines at the top of the student page.</p></div>
+        <button class="st-reset" type="button" onclick="resetStudentSection()">Reset</button></div>
+
+      <div class="st-row st-wrap student-pills">
+        <label class="pill"><input id="fieldName" type="checkbox" checked onchange="updateHeaderSample()"><span data-l="labelName">Name</span></label>
+        <label class="pill"><input id="fieldDate" type="checkbox" onchange="updateHeaderSample()"><span data-l="labelDate">Date</span></label>
+        <label class="pill"><input id="fieldPeriod" type="checkbox" onchange="updateHeaderSample()"><span data-l="labelPeriod">Period</span></label>
+        <label class="pill"><input id="fieldClass" type="checkbox" onchange="updateHeaderSample()"><span data-l="labelClass">Class</span></label>
+        <label class="pill"><input id="fieldTeacher" type="checkbox" onchange="updateHeaderSample()"><span data-l="labelTeacher">Teacher</span></label>
+        <label class="pill"><input id="fieldCustom" type="checkbox" onchange="updateHeaderSample()"><span data-l="labelCustom" data-empty="Your own">Your own</span></label>
       </div>
 
-      <div class="student-editor">
-        <div class="student-options">
-          <div class="student-option">
-            <input id="fieldName" type="checkbox" checked onchange="updateHeaderSample()">
-            <span class="option-name">Name</span>
-            <input id="labelName" type="text" value="Name" oninput="updateHeaderSample()">
-          </div>
-          <div class="student-option">
-            <input id="fieldDate" type="checkbox" onchange="updateHeaderSample()">
-            <span class="option-name">Date</span>
-            <input id="labelDate" type="text" value="Date" oninput="updateHeaderSample()">
-          </div>
-          <div class="student-option">
-            <input id="fieldClass" type="checkbox" onchange="updateHeaderSample()">
-            <span class="option-name">Class</span>
-            <input id="labelClass" type="text" value="Class" oninput="updateHeaderSample()">
-          </div>
-          <div class="student-option">
-            <input id="fieldPeriod" type="checkbox" onchange="updateHeaderSample()">
-            <span class="option-name">Period</span>
-            <input id="labelPeriod" type="text" value="Period" oninput="updateHeaderSample()">
-          </div>
-          <div class="student-option">
-            <input id="fieldTeacher" type="checkbox" onchange="updateHeaderSample()">
-            <span class="option-name">Teacher</span>
-            <input id="labelTeacher" type="text" value="Teacher" oninput="updateHeaderSample()">
-          </div>
-          <div class="student-option">
-            <input id="fieldCustom" type="checkbox" onchange="updateHeaderSample()">
-            <span class="option-name">Custom</span>
-            <input id="labelCustom" type="text" placeholder="Block, Team, Section, Homeroom, etc." oninput="updateHeaderSample()">
-          </div>
+      <details class="advanced st-more">
+        <summary>Rename a line (for example, Period → Block)</summary>
+        <div class="advanced-body st-rename">
+          <label>Name <input id="labelName" type="text" value="Name" oninput="updateHeaderSample()"></label>
+          <label>Date <input id="labelDate" type="text" value="Date" oninput="updateHeaderSample()"></label>
+          <label>Period <input id="labelPeriod" type="text" value="Period" oninput="updateHeaderSample()"></label>
+          <label>Class <input id="labelClass" type="text" value="Class" oninput="updateHeaderSample()"></label>
+          <label>Teacher <input id="labelTeacher" type="text" value="Teacher" oninput="updateHeaderSample()"></label>
+          <label>Your own <input id="labelCustom" type="text" placeholder="Block, Team, Homeroom…" oninput="updateHeaderSample()"></label>
         </div>
+      </details>
 
-        <div class="header-sample-wrap">
-          <div class="header-sample-label">Live worksheet header sample</div>
-          <div class="header-sample">
-            <div id="sampleTitle" class="sample-title">Puzzle Title</div>
-            <div id="sampleSubtitle" class="sample-subtitle"></div>
-            <div id="sampleFields" class="header-sample-fields"></div>
-          </div>
-        </div>
+      <div class="header-sample-wrap" style="display:none" aria-hidden="true">
+        <div class="header-sample"><div id="sampleTitle" class="sample-title"></div><div id="sampleSubtitle" class="sample-subtitle"></div><div id="sampleFields" class="header-sample-fields"></div></div>
       </div>
     </section>
 
     </div><aside class="ws-live">
     <section class="section preview-section">
-      <div class="section-heading-row">
-        <h2>5. Preview, Print & Download</h2>
-        <button class="section-reset-button" type="button" onclick="resetPreviewSection()">Reset Preview</button>
-      </div>
-      <p class="hint">Review the student page and answer key together, then print or download a PDF.</p>
+      <div class="st-head"><span class="st-num">5</span><div><h2>Preview and print</h2><p>The student page and the answer key. Print or download when they look right.</p></div>
+        <button class="st-reset" type="button" onclick="resetPreviewSection()">Reset</button></div>
       <div class="section-guide">
         <strong>Generate Puzzle</strong> creates the first layout. <strong>Scramble Puzzle</strong> keeps your words and settings but creates a new arrangement.
         The preview always shows both the student page and the matching answer key.
@@ -1853,11 +1782,27 @@ function updateHeaderSample() {
    Name gets the longest line; Date and Period short ones. Each row is stretched to the full width. Order: Name, Date, Class, Period, Teacher, Custom. */
 const FIELD_WIDTHS = [7, 3, 4, 2, 4, 3];
 function studentFieldsHtml(defs, cls) {
-  const items = defs.map(([on,label],i) => ({on, label, w:FIELD_WIDTHS[i], i})).filter(x => x.on);
+  // 2026-11-17 (Colleen: "it still does a bad job spacing out the name, date, teacher, period options"): the chosen lines sit in
+  // columns that line up from row to row. Up to 3 lines: one row; 4: two rows of 2; 5-6: two rows of 3. Each row starts with a
+  // long line (Name, Teacher, Class, your own) and the short ones (Date, Period) fill the narrow columns; a short last row stretches.
+  // defs order: Name, Date, Class, Period, Teacher, Custom
+  const items = defs.map(([on,label],i) => ({on, label, i})).filter(x => x.on);
   if(!items.length) return '';
+  const SHORT = new Set([1,3]), wide = items.filter(x => !SHORT.has(x.i)), short = items.filter(x => SHORT.has(x.i));
+  const n = items.length, cols = n <= 3 ? n : (n === 4 ? 2 : 3);
   const rows = [];
-  items.forEach(x => { const row = rows.find(r => r.reduce((a,y)=>a+y.w,0) + x.w <= 12); if(row) row.push(x); else rows.push([x]); });
-  return rows.map(r => '<div class="sf-row">' + r.sort((a,b)=>a.i-b.i).map(x => `<div class="${cls}" style="flex:${x.w} 1 0">${x.label && x.label.trim() ? escapeHtml(x.label) + ':' : ''}</div>`).join('') + '</div>').join('');
+  while (wide.length || short.length) {
+    const r = [(wide.length ? wide : short).shift()];
+    while (r.length < cols && (wide.length || short.length)) r.push((short.length ? short : wide).shift());
+    rows.push(r);
+  }
+  const tmpl = cols === 1 ? '1fr' : cols === 2 ? '3fr 2fr' : '2fr 1fr 1fr';
+  const cells = rows.map(r => r.map((x, k) => {
+    const span = k === r.length - 1 ? cols - k : 1;
+    const text = x.label && x.label.trim() ? escapeHtml(x.label) + ':' : '';
+    return `<div class="${cls}" style="grid-column:span ${span}">${text}</div>`;
+  }).join('')).join('');
+  return `<div class="sf-grid" style="grid-template-columns:${tmpl}">${cells}</div>`;
 }
 
 function showServerError(err) {
@@ -3548,6 +3493,41 @@ const LOOK_KEYS = ['title','subtitle','gridDisplay','wordBankDisplay','bankHeadi
       const p = state.lastPuzzle; if (!p || !p.config || p.config.gridDisplay === sel.value) return;
       p.config.gridDisplay = sel.value; hideMessages(); renderPuzzle(); requestAnimationFrame(() => fitAndCheckOutput(false));
     });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+})();
+
+// the redesigned steps (2026-11-17): the buttons and tiles set the original menus, and syncUi shows which one is on
+function syncUi() {
+  document.querySelectorAll('.seg[data-for], .tiles[data-for]').forEach(g => {
+    const v = val(g.dataset.for);
+    g.querySelectorAll('button[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  });
+  const manual = val('gridMode') === 'Manual', sz = document.querySelector('.st-size');
+  if (sz) { sz.style.opacity = manual ? '1' : '.4'; }
+  document.querySelectorAll('.student-pills span[data-l]').forEach(s => { const t = (val(s.dataset.l) || '').trim(); s.textContent = t || s.dataset.empty || ''; });
+}
+(function stepsUi() {
+  const go = () => {
+    document.querySelectorAll('.seg[data-for], .tiles[data-for]').forEach(g => g.addEventListener('click', e => {
+      const b = e.target.closest('button[data-v]'); if (!b) return;
+      const sel = document.getElementById(g.dataset.for); if (!sel || sel.value === b.dataset.v) return syncUi();
+      sel.value = b.dataset.v; sel.dispatchEvent(new Event('change', { bubbles: true })); syncUi();
+    }));
+    // "Choose a size": clicking the rows / columns boxes switches to it
+    document.querySelector('.st-size')?.addEventListener('pointerdown', () => { if (val('gridMode') !== 'Manual') { setVal('gridMode', 'Manual'); gridModeChanged(); syncUi(); } });
+    document.addEventListener('change', () => setTimeout(syncUi, 0));
+    document.addEventListener('input', () => setTimeout(syncUi, 0));
+    document.addEventListener('click', () => setTimeout(syncUi, 0));      // the Reset links
+    syncUi();
+    // the ASL - Cute tile shows A B C in her hands once the hands are here
+    const tile = document.querySelector('.tile-cute');
+    if (tile) cuteStripLoad().then(strip => {
+      const cv = tile.querySelector('canvas'), cx = cv.getContext('2d'), S = strip.height;
+      cv.width = 3 * S; cv.height = S;
+      ['a', 'b', 'c'].forEach((ch, i) => cx.drawImage(strip, CUTE_ALL.indexOf(ch) * S, 0, S, S, i * S, 0, S, S));
+      tile.classList.add('ready');
+    }).catch(() => {});
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
 })();
