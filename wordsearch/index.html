@@ -1376,6 +1376,96 @@ button.st-text { background:none !important; color:#2F6BFF !important; border:0 
 .cute-sp { display:inline-block; width:.45em; }
 .sf-grid > div { min-width:0; }
 </style>
+<style id="dark-look">
+/* Dark look (2026-11-18, Colleen: "make the page have a dark background", "improve the colors"): deep navy page, raised navy cards,
+   cream text, bright blue and yellow, a rainbow of accents from the asl.cool tagline. Screen only: the printed pages stay white paper. */
+@media screen {
+:root { color-scheme:dark; --bg:#0E1124; --panel:#181C3A; --panel2:#1F2449; --border:#2D3367; --text:#F4F1EA; --muted:#AEB4DC; --blueb:#5B8CFF; --gold:#FFC83D; }
+body { background:radial-gradient(900px 500px at 0% -5%, rgba(91,140,255,.20), transparent 60%), radial-gradient(800px 480px at 100% 0%, rgba(167,112,255,.16), transparent 60%),
+  radial-gradient(900px 600px at 50% 110%, rgba(255,200,61,.07), transparent 60%), #0E1124 !important; background-attachment:fixed !important; color:#F4F1EA; }
+.brand h1 { color:#F4F1EA !important; font-size:clamp(40px,6vw,64px) !important; }
+.brand-tagline span:nth-child(8n+1) { color:#FF7A7F !important } .brand-tagline span:nth-child(8n+2) { color:#FFA94D !important }
+.brand-tagline span:nth-child(8n+3) { color:#FFD43B !important } .brand-tagline span:nth-child(8n+4) { color:#69DB7C !important }
+.brand-tagline span:nth-child(8n+5) { color:#4FD1F5 !important } .brand-tagline span:nth-child(8n+6) { color:#7EA6FF !important }
+.brand-tagline span:nth-child(8n+7) { color:#B197FC !important } .brand-tagline span:nth-child(8n+8) { color:#F783AC !important }
+.section { background:linear-gradient(180deg,#1B1F40,#171B37) !important; border:1px solid #2D3367 !important; box-shadow:0 10px 30px rgba(0,0,0,.35) !important; }
+.section h2, .section:nth-of-type(n) h2, .section h3, .source-card h3, .working-list-title h3, .modal h3, .app-message-modal h3 { color:#F4F1EA !important; }
+.st-head p, .st-help, .section .hint, .control-help, .mini, .source-card p, .working-list-title p, .page-caption, .preview-tool-label, .st-opt, .st-size span { color:#AEB4DC !important; }
+label, .section label, .field > label, .selected-source-wrap > label, .toggle label, .st-label { color:#F4F1EA !important; }
+.section-guide { background:#1F2449 !important; color:#F4F1EA !important; }
+input, textarea, select { background:#10132A !important; color:#F4F1EA !important; border:1.5px solid #343B74 !important; }
+input::placeholder, textarea::placeholder { color:#7C83B3 !important; }
+input:hover, textarea:hover, select:hover { background:#10132A !important; border-color:#4A52A0 !important; }
+input:focus, textarea:focus, select:focus { background:#10132A !important; border-color:#5B8CFF !important; box-shadow:0 0 0 3px rgba(91,140,255,.25) !important; }
+.st-box { background:#141833; border-color:#2D3367; }
+.st-soft, .source-card, .working-list-card, .toggle, .student-option, details.advanced, .selected-source-wrap, .preview-tool-group, .st-more { background:#141833 !important; border-color:#2D3367 !important; }
+.st-sources { background:none !important; }
+.st-more summary, details.advanced summary, .student-option .option-name, #topicAvailability { color:#F4F1EA !important; }
+.st-rename label { color:#AEB4DC !important; }
+.chip { background:#24306A !important; border:1px solid #3A4A9A !important; color:#F4F1EA !important; }
+.chip button { color:#FF8A8F !important; }
+.st-pill { background:#24306A; color:#9DBBFF; }
+button { background:#3D73FF !important; }
+button:hover:not(:disabled) { filter:brightness(1.1); box-shadow:0 4px 14px rgba(61,115,255,.35) !important; }
+button.secondary, .section-reset-button { background:#1F2449 !important; color:#F4F1EA !important; border:1.5px solid #3A4180 !important; }
+button.secondary:hover:not(:disabled), .section-reset-button:hover:not(:disabled) { border-color:#5B8CFF !important; }
+button.primary-action { background:linear-gradient(135deg,#3D73FF,#7A5CFF) !important; }
+button.mint { background:#2FB879 !important; color:#08261A !important; }
+.reset-all-button { background:transparent !important; color:#FFC83D !important; border:1.5px solid rgba(255,200,61,.55) !important; min-width:0 !important; padding:9px 20px !important; font-size:15px !important; box-shadow:none !important; }
+.reset-all-button:hover { background:rgba(255,200,61,.12) !important; }
+button.st-reset { color:#AEB4DC !important; } button.st-reset:hover { color:#FFC83D !important; }
+button.st-text { color:#8FB0FF !important; }
+.danger-button { background:#2A1730 !important; color:#FF8A8F !important; border-color:#6A2C3A !important; }
+.warning { background:#3A1622 !important; border:1px solid #7A2E40 !important; color:#FFC2C9 !important; }
+.status, .source-inline-message.ok { background:#10302A !important; border:1px solid #1F6B52 !important; color:#B7F0D4 !important; }
+.source-inline-message.error { background:#3A1622 !important; border-color:#7A2E40 !important; color:#FFC2C9 !important; }
+.stale-note { background:#3A3010; border-color:#7A6420; color:#FFE8A3; }
+.preview-wrap { background:#0B0E20 !important; border:1px solid #262C5C; }
+.ws-live .preview-section .st-num { background:#FFC83D; color:#1B1E3C; }
+.st-num { background:#3D73FF; box-shadow:0 0 0 4px rgba(61,115,255,.18); }
+.st:nth-of-type(even) .st-num { box-shadow:0 0 0 4px rgba(255,200,61,.16); }
+.seg { background:#10132A; border:1px solid #2D3367; }
+.seg button { color:#C9CEEC !important; }
+.seg button.on { background:#3D73FF !important; color:#fff !important; box-shadow:0 2px 10px rgba(61,115,255,.4) !important; }
+.seg3 button small { color:#AEB4DC; } .seg3 button.on small { color:#DDE6FF; }
+.pill span { background:#10132A; border-color:#343B74; color:#C9CEEC; }
+.pill span::before { color:#6D74A8; }
+.pill input:checked + span { background:#3D73FF; border-color:#3D73FF; color:#fff; }
+/* the letter tiles: each sample sits on a little piece of white paper, so it looks the way it prints */
+.tiles button { background:#10132A !important; color:#F4F1EA !important; border:1.5px solid #2D3367 !important; }
+.tiles button b { background:#fff; color:#1B1E3C; border-radius:10px; width:100%; }
+.tiles button span { color:#C9CEEC; }
+.tiles button:hover { border-color:#5B8CFF !important; }
+.ws-steps .tiles button.on, .ws-steps .tiles button.on:hover { border:2px solid #FFC83D !important; background:#1F2449 !important; }
+.ws-steps .tiles button.on span { color:#FFC83D; }
+.modal-backdrop { background:rgba(5,7,18,.7) !important; }
+.modal, .app-message-modal { background:#181C3A !important; border:1px solid #2D3367 !important; color:#F4F1EA !important; }
+.app-message-text { color:#F4F1EA !important; } .app-message-icon { background:#24306A !important; color:#9DBBFF !important; }
+.braille-note { color:#AEB4DC !important; } .braille-note strong { color:#F4F1EA !important; }
+.word-count, .word-count strong, #wordCount, strong:has(#wordCount) { color:#9DBBFF !important; }
+}
+/* the letter styles row at the top (2026-11-18): one sample of every letter style; clicking one picks it for the puzzle */
+.ls-strip { margin:0 0 22px; }
+.ls-strip h2 { font:600 26px Fredoka, system-ui, sans-serif; color:#F4F1EA; margin:0; }
+.ls-strip p { margin:2px 0 12px; color:#AEB4DC; font-size:15px; }
+.ls-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; }
+button.ls-card { background:#181C3A !important; border:1.5px solid #2D3367 !important; border-top:5px solid var(--ac) !important; border-radius:16px !important; padding:12px 10px 10px !important;
+  display:flex; flex-direction:column; align-items:stretch; gap:8px; color:#F4F1EA !important; box-shadow:0 8px 22px rgba(0,0,0,.3) !important; cursor:pointer; text-align:center; }
+button.ls-card:hover { border-color:var(--ac) !important; transform:translateY(-2px); filter:none; }
+button.ls-card.on { background:#22285A !important; border:2px solid var(--ac) !important; border-top-width:5px !important; padding:11px 9px 9px !important; }
+.ls-paper { background:#fff; color:#1B1E3C; border-radius:10px; height:64px; display:flex; align-items:center; justify-content:center; overflow:hidden; font:800 28px/1 Nunito, system-ui, sans-serif; letter-spacing:.06em; }
+.ls-paper.f-asl { font-family:'CGasl', sans-serif; font-weight:400; font-size:26px; letter-spacing:0; }
+.ls-paper.f-full { font-family:'BrailleFull', sans-serif; font-weight:400; font-size:30px; letter-spacing:.04em; }
+.ls-paper.f-dots { font-family:'Segoe UI Symbol','Arial Unicode MS','Apple Symbols',sans-serif; font-weight:400; font-size:30px; letter-spacing:.1em; }
+.ls-paper canvas { height:44px; width:auto; max-width:100%; display:none; }
+.ls-paper.ready canvas { display:block; } .ls-paper.ready i { display:none; }
+.ls-paper i { font:700 13px Nunito, system-ui, sans-serif; color:#5A6185; font-style:normal; letter-spacing:0; }
+.ls-name { font-weight:800; font-size:14px; }
+.ls-card.on .ls-name::after { content:" ✓"; color:var(--ac); }
+@media (max-width:1100px) { .ls-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media (max-width:560px) { .ls-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .ls-paper.f-asl { font-size:20px; } }
+@media print { .ls-strip { display:none !important; } }
+</style>
 </head>
 <body>
   <div class="shell">
@@ -1388,6 +1478,19 @@ button.st-text { background:none !important; color:#2F6BFF !important; border:0 
     <div class="reset-all-wrap">
       <button class="reset-all-button" type="button" onclick="resetAllDefaults()">Reset All to Defaults</button>
     </div>
+
+    <section class="ls-strip" aria-label="Letter styles">
+      <h2>Letter styles</h2>
+      <p>Every way the puzzle letters can look. Click one to use it in your puzzle.</p>
+      <div class="ls-grid" data-for="gridDisplay">
+        <button type="button" class="ls-card" data-v="UPPERCASE" style="--ac:#FF7A7F"><span class="ls-paper">HELLO</span><span class="ls-name">Capitals</span></button>
+        <button type="button" class="ls-card" data-v="lowercase" style="--ac:#FFA94D"><span class="ls-paper">hello</span><span class="ls-name">Lowercase</span></button>
+        <button type="button" class="ls-card" data-v="ASL Fingerspelling" style="--ac:#FFD43B"><span class="ls-paper f-asl">HELLO</span><span class="ls-name">ASL - Gallaudet</span></button>
+        <button type="button" class="ls-card" data-v="ASL Cute" style="--ac:#69DB7C"><span class="ls-paper ls-cute"><canvas width="320" height="64" aria-label="hello in ASL - Cute hands"></canvas><i>Loading the hands…</i></span><span class="ls-name">ASL - Cute</span></button>
+        <button type="button" class="ls-card" data-v="Braille — Full Cell" style="--ac:#4FD1F5"><span class="ls-paper f-full">hello</span><span class="ls-name">Braille, full cell</span></button>
+        <button type="button" class="ls-card" data-v="Braille — Dots Only" style="--ac:#B197FC"><span class="ls-paper f-dots">⠓⠑⠇⠇⠕</span><span class="ls-name">Braille, dots only</span></button>
+      </div>
+    </section>
 
     <div class="ws-layout"><div class="ws-steps">
     <!-- 2026-11-17 redesign (Colleen: "reconsider everything about how each of these sections is designed"): short steps, the main
@@ -3519,7 +3622,7 @@ const LOOK_KEYS = ['title','subtitle','gridDisplay','wordBankDisplay','bankHeadi
 
 // the redesigned steps (2026-11-17): the buttons and tiles set the original menus, and syncUi shows which one is on
 function syncUi() {
-  document.querySelectorAll('.seg[data-for], .tiles[data-for]').forEach(g => {
+  document.querySelectorAll('.seg[data-for], .tiles[data-for], .ls-grid[data-for]').forEach(g => {
     const v = val(g.dataset.for);
     g.querySelectorAll('button[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   });
@@ -3529,7 +3632,7 @@ function syncUi() {
 }
 (function stepsUi() {
   const go = () => {
-    document.querySelectorAll('.seg[data-for], .tiles[data-for]').forEach(g => g.addEventListener('click', e => {
+    document.querySelectorAll('.seg[data-for], .tiles[data-for], .ls-grid[data-for]').forEach(g => g.addEventListener('click', e => {
       const b = e.target.closest('button[data-v]'); if (!b) return;
       const sel = document.getElementById(g.dataset.for); if (!sel || sel.value === b.dataset.v) return syncUi();
       sel.value = b.dataset.v; sel.dispatchEvent(new Event('change', { bubbles: true })); syncUi();
@@ -3548,6 +3651,14 @@ function syncUi() {
       ['a', 'b', 'c'].forEach((ch, i) => cx.drawImage(strip, CUTE_ALL.indexOf(ch) * S, 0, S, S, i * S, 0, S, S));
       tile.classList.add('ready');
     }).catch(() => {});
+    // the Letter styles row: HELLO in her hands
+    const ls = document.querySelector('.ls-cute');
+    if (ls) cuteStripLoad().then(strip => {
+      const cv = ls.querySelector('canvas'), cx = cv.getContext('2d'), S = strip.height;
+      cv.width = 5 * S; cv.height = S;
+      [...'hello'].forEach((ch, i) => cx.drawImage(strip, CUTE_ALL.indexOf(ch) * S, 0, S, S, i * S, 0, S, S));
+      ls.classList.add('ready');
+    }).catch(() => { const i = ls.querySelector('i'); if (i) i.textContent = 'Shows at asl.cool/wordsearch'; });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
 })();
