@@ -320,7 +320,7 @@ body.withside .wrap { margin-right: 240px; }
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
 // Other server files: TestingRooms.gs (testing rooms in support classes), Health.gs (health check, archive, weekly backup, Errors tab), TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.100';
+var VERSION = '0.101';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -394,7 +394,7 @@ var DEFAULTS = [
   ['Teacher emails for co-taught classes', 'Primary teacher', 'Primary teacher', 'Primary teacher, All teachers, or Testing contact (falls back to the primary teacher).'],
   ['Start the test clock when a student arrives', 'Yes', 'Yes', 'Yes: “Arrived” checks the student in and starts their testing time; “Check out” ends it. No: a separate Start button.'],
   ['Mark students who never arrived as no-shows', 'At 3:00', 'At 3:00', 'At 3:00: students still not checked in are marked no-shows just before the 3:00 emails. When the period ends: 10 minutes after their period. Off: only by hand.'],
-  ['Email the counselor at this many no-shows', '3', '3', 'When a student misses this many appointments in one school year, their counselor gets one email (from the Counselors tab). 0 = never.'],
+  ['Email the counselor at this many no-shows', '3', '3', 'When a student misses this many appointments in one school year, their counselor gets one email (Settings › Reports › Counselors). 0 = never.'],
   ['No-show email to students', 'On', 'On', 'On: at 3:00 a student who missed their appointment gets an email (rebook, or tell us to save or toss the test).'],
   ['Student reminder the school day before', 'On', 'On', 'On: students get a reminder at 3:00 the school day before, with a link to cancel.'],
   ['Student reminder the morning of', 'On', 'On', 'On: students get a reminder at 6 AM on the day, with a link to cancel.'],
@@ -414,12 +414,12 @@ var DEFAULTS = [
   ['Infinite Campus: skip rows with no room', 'Yes', 'Yes', 'Yes: a row with an empty courseSection.roomName and no period isn’t a class. (A row with a period, like PE Team Sports, is always a class.)'],
   ['Infinite Campus: skip rows whose period end isn’t a number', 'Yes', 'Yes', 'Yes: a row whose sectionSchedule.periodEnd isn’t a plain number isn’t a class.'],
   ['Shared administrator account', 'testingcenter@d204.lths.net', 'testingcenter@d204.lths.net', 'The Testing Center’s shared school account. It has full administrator access (both campuses, settings, the hub password) without the hub password, so a substitute coordinator can sign in to it and run everything. Clear it to turn this off.'],
-  ['Coordinator hub: no password needed for', '', '', 'School emails (comma list) that always get into the coordinator hub without the password. Not on the Staff tab: coordinator for both campuses.'],
+  ['Coordinator hub: no password needed for', '', '', 'School emails (comma list) that always get into the coordinator hub without the password. Not in Settings › Staff: coordinator for both campuses.'],
   ['Assigned seating (numbered desks)', 'Yes', 'Yes', 'Yes: at check-in each student gets a numbered desk from the room drawing (Room view). No: no desks; students sit anywhere, and everything else works the same.'],
   ['Tell the next-period teacher when a student is still testing', 'Off', 'Off', 'On: when a student is still testing after the bell (extended time), their next class’s teacher gets an email saying they’ll be late and about when.'],
   ['Weekly email to case managers', 'On', 'On', 'On: on the last school day of the week, each case manager gets their caseload’s tests next week and any missed this week.'],
   ['Counselor heads-up: this many makeups in one class, or no-shows, in 30 days', '3', '3', 'A student with this many no-shows, or this many makeup tests in one class, in 30 days: their counselor gets one email that month. 0 or empty: off.'],
-  ['Coordinator hub: anyone with the password', 'Yes', 'Yes', 'Yes: any school account (not students) with the password gets coordinator access to both campuses. No: only people on the Staff tab can unlock it (with the password).'],
+  ['Coordinator hub: anyone with the password', 'Yes', 'Yes', 'Yes: any school account (not students) with the password gets coordinator access to both campuses. No: only people in Settings › Staff can unlock it (with the password).'],
   ['Daily health email to', '', '', 'School emails (comma list) that get the health check each morning when something needs attention.'],
   ['Daily health email when all is well', 'No', 'No', 'Yes: send the morning health email every school day, even when everything is fine.'],
   ['Testing Center Google Calendar', 'On', 'On', 'On: every appointment shows on the “Testing Center appointments” calendar of the account that runs the app (share that calendar with the Testing Center account).'],
@@ -867,7 +867,7 @@ function ensureSetup_() {          // a sheet that skipped Set up, lost its star
   }
   if (!dp.getProperty('hubopen')) {          // 0.64, once (Colleen): anyone who knows the coordinator password can use the coordinator tools
     dp.setProperty('hubopen', '1');
-    locked_(function () { var r = rows_('Settings').filter(function (x) { return str_(x.key) === 'Coordinator hub: anyone with the password'; })[0]; if (r) update_('Settings', r, { S: 'Yes', N: 'Yes', help: 'Yes: any school account (not students) with the password gets coordinator access to both campuses. No: only people on the Staff tab can unlock it (with the password).' }); });
+    locked_(function () { var r = rows_('Settings').filter(function (x) { return str_(x.key) === 'Coordinator hub: anyone with the password'; })[0]; if (r) update_('Settings', r, { S: 'Yes', N: 'Yes', help: 'Yes: any school account (not students) with the password gets coordinator access to both campuses. No: only people in Settings › Staff can unlock it (with the password).' }); });
   }
   if (!dp.getProperty('exrule')) {          // 0.61, once: the student-team rows (EX…) aren't classes either
     dp.setProperty('exrule', '1');
@@ -1095,7 +1095,7 @@ function setupTabs_() {
 }
 // Protect the sheet: dropdowns where a setting has fixed choices; technical tabs hidden, with a warning before anyone edits them.
 var CUTOFF_CHOICES_ = ['Until the period starts', '1 hour before', '2 hours before', '4 hours before', '12 hours before', '24 hours before', '48 hours before', '6:00 AM that morning', 'Midnight the night before', '8:00 PM the night before', '3:00 PM the day before'];
-var SETTING_CHOICES = { 'Booking closes': CUTOFF_CHOICES_, 'Send emails': ['Off', 'On'], 'Student booking in this app': ['On', 'Off'], 'Waitlist': ['On', 'Off'], 'Waitlist offers': ['Automatic', 'Coordinator approves first'], 'Offers inside the booking cutoff': ['Ask coordinator', 'Allow'],
+var SETTING_CHOICES = { 'Booking closes': CUTOFF_CHOICES_, 'Assigned seating (numbered desks)': ['Yes', 'No'], 'Tell the next-period teacher when a student is still testing': ['Off', 'On'], 'Weekly email to case managers': ['On', 'Off'], 'Testing Center Google Calendar': ['On', 'Off'], 'Infinite Campus: skip rows with no room': ['Yes', 'No'], 'Infinite Campus: skip rows whose period end isn’t a number': ['Yes', 'No'], 'Send emails': ['Off', 'On'], 'Student booking in this app': ['On', 'Off'], 'Waitlist': ['On', 'Off'], 'Waitlist offers': ['Automatic', 'Coordinator approves first'], 'Offers inside the booking cutoff': ['Ask coordinator', 'Allow'],
   'Missing-material emails': ['Off', 'Review first', 'Automatic'], 'Missing-material reminder': ['School day before', '2 school days before'], 'Teacher emails for co-taught classes': ['Primary teacher', 'All teachers', 'Testing contact'],
   'Completion emails to teachers': ['On', 'Off'], 'Student confirmation emails': ['On', 'Off'], 'Securly export': ['Email list', 'CSV'], 'Email teachers when a student books': ['On', 'Off'], 'Email teachers about no-shows': ['On', 'Off'],
   'Email teachers when an appointment is canceled': ['On', 'Off'], 'Start the test clock when a student arrives': ['Yes', 'No'], 'Mark students who never arrived as no-shows': ['At 3:00', 'When the period ends', 'Off'], 'No-show email to students': ['On', 'Off'],
@@ -3651,18 +3651,24 @@ function api_setPeriods(campus, d, periods, open, cancel, reason) {
 }
 
 // ---------- Settings in the app: plain switches for the everyday settings (the sheet's Settings tab stays the store)
-var SETTING_GROUPS = [
+var SETTING_GROUPS = [          // 0.101 (Colleen): every setting is here, so nobody has to change things on the sheet
   ['Emails (whole app)', ['Send emails']],
-  ['Booking', ['Student booking in this app', 'Days ahead students can book', 'Booking closes', 'Most upcoming appointments per student', 'Booking purposes']],
-  ['Waitlist', ['Waitlist', 'Waitlist offers', 'Hours to answer a waitlist offer', 'Quiet hours']],
-  ['Arriving and no-shows', ['Start the test clock when a student arrives', 'Mark students who never arrived as no-shows', 'Email the counselor at this many no-shows']],
+  ['Booking', ['Student booking in this app', 'Days ahead students can book', 'Booking closes', 'Most upcoming appointments per student', 'Booking purposes', 'No walk-ins during periods']],
+  ['Waitlist', ['Waitlist', 'Waitlist offers', 'Hours to answer a waitlist offer', 'Quiet hours', 'Offers inside the booking cutoff']],
+  ['Arriving and no-shows', ['Start the test clock when a student arrives', 'Mark students who never arrived as no-shows', 'Assigned seating (numbered desks)', 'Tell the next-period teacher when a student is still testing', 'Email the counselor at this many no-shows']],
   ['Emails to students', ['Student confirmation emails', 'Student reminder the school day before', 'Student reminder the morning of', 'No-show email to students']],
   ['Emails to teachers', ['Email teachers when a student books', 'Completion emails to teachers', 'Email teachers about no-shows', 'Email teachers when an appointment is canceled', 'Missing-material emails', 'Missing-material reminder', 'Teacher emails for co-taught classes']],
-  ['The Testing Center', ['Second semester starts', 'Campus name', 'Testing Center location', 'Testing Center email', 'Paper test drop-off locations', 'Bell.plus link']],
-  ['Hub access and health (administrators)', ['Coordinator hub: no password needed for', 'Coordinator hub: anyone with the password', 'Daily health email to', 'Daily health email when all is well']]
+  ['Emails to case managers and counselors', ['Weekly email to case managers', 'Counselor heads-up: this many makeups in one class, or no-shows, in 30 days']],
+  ['The Testing Center', ['Second semester starts', 'Campus name', 'Testing Center location', 'Testing Center email', 'Paper test drop-off locations', 'Bell.plus link', 'Securly export', 'Testing Center Google Calendar', 'Regular schedule', 'Wednesday schedule']],
+  ['Scan & Score', ['Scan & Score: delete scans after (days)']],
+  ['Teachers’ access-code docs (administrators)', ['Access-code template link', 'Access-code guide link']],
+  ['Hub access and health (administrators)', ['Coordinator hub: no password needed for', 'Coordinator hub: anyone with the password', 'Daily health email to', 'Daily health email when all is well', 'Shared administrator account', 'Testing Center Google account']],
+  ['Accounts and Infinite Campus imports (administrators)', ['School email domain', 'Teacher email pattern', 'Study hall / lunch / support names contain', 'Infinite Campus: not classes if the course code starts with', 'Infinite Campus: skip rows with no room', 'Infinite Campus: skip rows whose period end isn’t a number', 'Testing rooms: class names containing', 'Testing rooms: course numbers starting with', 'Hold a full roster import that drops more than']]
 ];
-var SETTING_ADMIN = ['Send emails', 'Coordinator hub: no password needed for', 'Coordinator hub: anyone with the password', 'Daily health email to', 'Daily health email when all is well'];
-var SETTING_NUM = ['Email the counselor at this many no-shows', 'Days ahead students can book', 'Most upcoming appointments per student', 'Hours to answer a waitlist offer'];
+var SETTING_ADMIN = ['Send emails', 'Coordinator hub: no password needed for', 'Coordinator hub: anyone with the password', 'Daily health email to', 'Daily health email when all is well', 'Shared administrator account', 'Testing Center Google account',
+  'School email domain', 'Teacher email pattern', 'Study hall / lunch / support names contain', 'Infinite Campus: not classes if the course code starts with', 'Infinite Campus: skip rows with no room', 'Infinite Campus: skip rows whose period end isn’t a number',
+  'Testing rooms: class names containing', 'Testing rooms: course numbers starting with', 'Hold a full roster import that drops more than', 'Access-code template link', 'Access-code guide link'];
+var SETTING_NUM = ['Email the counselor at this many no-shows', 'Days ahead students can book', 'Scan & Score: delete scans after (days)', 'Counselor heads-up: this many makeups in one class, or no-shows, in 30 days', 'Most upcoming appointments per student', 'Hours to answer a waitlist offer'];
 function api_settingsGet() {
   var w = need_('staff'), by = {}; rows_('Settings').forEach(function (r) { by[r.key] = r; });
   var help = {}; DEFAULTS.forEach(function (d) { help[d[0]] = d[3]; });
@@ -8862,7 +8868,7 @@ function coPeriods() { var V0 = CO.view;
     PG.grid = g;
     var ps = g.days.length ? g.days[0].periods.map(function (p) { return p.period; }) : [];
     var out = '<div class="card"><div class="row" style="margin-bottom:8px"><h2 class="grow" style="margin:0">Open periods · ' + esc(CO.dash.names[CO.campus]) + '</h2><button class="btn sm" onclick="PG.from=\'\';coView(\'periods\')">From today</button><button class="btn sm" onclick="PG.from=PG.grid.days[PG.grid.days.length-1].date;coView(\'periods\')">Later ›</button></div>' +
-      '<p class="small mute" style="margin-top:0">Tap a period to close it, leave early from it, close the whole day, or reopen it. Students already booked can be canceled with an email that says why. The usual week (like North’s Monday 6th) is on the sheet’s Testing Periods tab.</p>' +
+      '<p class="small mute" style="margin-top:0">Tap a period to close it, leave early from it, close the whole day, or reopen it. Students already booked can be canceled with an email that says why. The usual week (like North’s Monday 6th) is in Settings › Seats &amp; periods.</p>' +
       '<div style="overflow-x:auto"><table class="t small pgrid"><tr><th>Day</th>' + ps.map(function (p) { return '<th style="text-align:center">P' + esc(p) + '</th>'; }).join('') + '<th></th></tr>' +
       g.days.map(function (d) {
         return '<tr><td style="white-space:nowrap"><b>' + esc(relD(d.date)) + '</b><div class="tiny mute">' + esc(d.sched) + (d.note ? ' · ' + esc(d.note) : '') + '</div></td>' + d.periods.map(function (p) {
@@ -8911,7 +8917,7 @@ function coPickupDraw(d) {
     (d.boxes.length ? d.boxes.map(function (b) {
       return '<div class="card" style="padding:10px 12px;margin-bottom:8px"><div class="row" style="align-items:center"><b class="grow">📥 ' + esc(b.name) + '</b><span class="chip">' + b.tests.length + ' test' + (b.tests.length === 1 ? '' : 's') + '</span></div>' +
         (b.tests.length ? b.tests.map(function (x) { return '<div class="slot"><div class="grow"><b>' + esc(x.test) + '</b> <span class="mute">· ' + esc(x.course) + ' · ' + esc(x.teacher) + '</span><div class="tiny mute">First needed ' + when(x) + ' · ' + x.students + ' student' + (x.students === 1 ? '' : 's') + (x.at ? ' · dropped ' + esc(new Date(x.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })) : '') + '</div></div>' + (d.edit ? '<button class="btn sm" onclick="coPicked(\'' + esc(x.aid) + '\', this)">✓ Picked up</button>' : '') + '</div>'; }).join('') : '<div class="small mute" style="padding:6px 0">Empty.</div>') + '</div>';
-    }).join('') : '<p>No drop boxes are named yet. Add them on the sheet’s Settings tab, row <b>Paper test drop-off locations</b> (separated by commas).</p>') +
+    }).join('') : '<p>No drop boxes are named yet. Add them in Settings › Switches › The Testing Center › <b>Paper test drop-off locations</b> (separated by commas).</p>') +
     (d.boxes.length ? '<div class="row" style="margin-top:10px"><button class="btn" onclick="coBoxSigns(this)">🖨️ Print the drop box signs</button><span class="tiny mute">One page per box, with a QR code teachers scan after dropping a test.</span></div>' : '') + (any ? '' : ''), true);
   window.__pick = d;
 }
@@ -9087,7 +9093,7 @@ function coSwitches() { var V0 = CO.view;
       var adm = /administrators/.test(g.title);
       return '<div class="card"><h2>' + esc(g.title) + '</h2><table class="t small"><tr><th style="width:38%"></th>' + (adm ? '<th>Both campuses</th>' : '<th>' + esc(st.names.S) + '</th><th>' + esc(st.names.N) + '</th>') + '</tr>' +
         g.items.map(function (it) { return '<tr><td><b>' + esc(it.key) + '</b><div class="tiny mute">' + esc(it.help) + '</div></td>' + (adm ? '<td>' + cell(it, 'S') + '</td>' : '<td>' + cell(it, 'S') + '</td><td>' + cell(it, 'N') + '</td>') + '</tr>'; }).join('') + '</table></div>';
-    }).join('') + '<p class="tiny mute">Changes save when you leave the box. They’re stored on the sheet’s Settings tab (dropdowns there too).</p>');
+    }).join('') + '<p class="tiny mute">Changes save when you leave the box. Change settings here, not on the sheet. Gray boxes are for an administrator.</p>');
   }).catch(fail);
   return null;
 }
@@ -9326,7 +9332,7 @@ function coSecurly(period) {
   call('api_securly', CO.campus, CO.date, period).then(function (s) {
     modal('<h2>Students for Securly · Period ' + esc(period) + '</h2><p class="small">' + s.count + ' students with active appointments (canceled and waitlisted students are left out).</p><textarea id="secTxt" style="min-height:180px" readonly>' + esc(s.text) + '</textarea>' +
       '<div class="row" style="margin-top:8px"><button class="btn pri" onclick="$(\'secTxt\').select();document.execCommand(\'copy\');toast(\'Copied\')">Copy</button><button class="btn" onclick="coDownload(\'securly-' + CO.date + '-p' + period + (s.format === 'csv' ? '.csv' : '.txt') + '\', $(\'secTxt\').value)">Download</button><button class="btn" onclick="closeModal()">Close</button></div>' +
-      '<p class="tiny mute">Next: in Securly Classroom, add these students to a class or group for this period. Format: ' + (s.format === 'csv' ? 'CSV' : 'one email per line') + ' (change it on the Settings tab once you know what your Securly accepts).</p>');
+      '<p class="tiny mute">Next: in Securly Classroom, add these students to a class or group for this period. Format: ' + (s.format === 'csv' ? 'CSV' : 'one email per line') + ' (change it in Settings › Switches › The Testing Center once you know what your Securly accepts).</p>');
   }).catch(fail);
 }
 function coDownload(name, text) { var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = name; a.click(); }
@@ -9468,7 +9474,7 @@ function coMyMail() {
 }
 function coMyMailDraw(d) {
   var el = $('myMail'); if (!el) return; var p = d.prefs, box = function (k, title, sub) { return '<label style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line, #ddd);cursor:pointer"><input type="checkbox" id="mm_' + k + '"' + (p[k] ? ' checked' : '') + ' style="width:20px;height:20px;margin-top:2px"><span><b>' + title + '</b><br><span class="small mute">' + sub + '</span></span></label>'; };
-  el.innerHTML = '<h2>📬 My Testing Center emails</h2><p class="small mute" style="margin-top:0">These go to your own school email (' + esc(B.email) + '). Replies go to the campus Testing Center address.' + (d.emailsOn ? '' : ' <b>Emails are off right now (Switches › Send emails), so nothing is sent yet;</b> they wait in Emails as Held.') + (d.onStaff ? '' : ' You aren’t on the Staff tab, so the app doesn’t send you these until a coordinator adds you.') + '</p>' +
+  el.innerHTML = '<h2>📬 My Testing Center emails</h2><p class="small mute" style="margin-top:0">These go to your own school email (' + esc(B.email) + '). Replies go to the campus Testing Center address.' + (d.emailsOn ? '' : ' <b>Emails are off right now (Switches › Send emails), so nothing is sent yet;</b> they wait in Emails as Held.') + (d.onStaff ? '' : ' You aren’t in Settings › Staff, so the app doesn’t send you these until a coordinator adds you.') + '</p>' +
     box('heads', '⏰ Period heads-up', 'About 10 minutes before each period starts: who’s coming, their extra time, and anything still missing. Only when someone is scheduled.') +
     box('morning', '🌅 Morning summary', 'Around 6 AM: today period by period, tests still missing, and what needs printing.') +
     box('pm', '🕒 3:00 summary', 'The next school day’s list and what to print, today’s no-shows, and new test requests from teachers.') +
@@ -9496,12 +9502,12 @@ function coAdmin() {
     '<div class="card"><h2>Import history</h2><div id="impHist"><div class="spin">Loading…</div></div></div>' +
     '<div class="card"><h2>Upcoming date changes</h2><div id="dcList"><div class="spin">Loading…</div></div></div>' +
     '<div class="card"><h2>My dashboard</h2><label class="f">Open on</label><select onchange="coPref(\'land\', this.value)">' + CO_VIEWS.map(function (v) { return '<option value="' + v[0] + '"' + (CO.prefs.land === v[0] ? ' selected' : '') + '>' + v[1] + '</option>'; }).join('') + '</select><label class="f">Show these sections</label><div class="grid3">' + CO_VIEWS.filter(function (v) { return v[0] !== 'today' && v[0] !== 'admin'; }).map(function (v) { return '<label class="check"><input type="checkbox"' + (hide.indexOf(v[0]) < 0 ? ' checked' : '') + ' onchange="coHide(\'' + v[0] + '\', !this.checked)"> ' + v[1] + '</label>'; }).join('') + '</div></div>' +
-    (B.roles.indexOf('admin') >= 0 ? '<div class="card"><h2>Hub password</h2><p class="small mute" style="margin-top:0">Coordinators on the Staff tab need it to open the hub. People listed in Settings › “Coordinator hub: no password needed for” go straight in.</p><div class="grid3"><input type="password" id="pwOld" placeholder="Current password"><input type="password" id="pwNew" placeholder="New password (8+)"><button class="btn" onclick="call(\'api_hubSetPassword\', $(\'pwNew\').value, $(\'pwOld\').value).then(function(b){B=b;toast(\'Password changed\')}).catch(fail)">Change password</button></div></div>' : '') +
-    '<div class="card"><h2>Settings</h2><p class="small">Seats, closed periods, the booking cutoff, waitlist rules, email switches, drop-off locations and the co-teaching rule are on the sheet’s <b>Settings</b> and <b>Testing Periods</b> tabs (a South and a North column). Bell schedules and no-school days are on <b>Bell Schedules</b> and <b>Calendar</b>. Staff access is on <b>Staff</b>.</p></div>';
+    (B.roles.indexOf('admin') >= 0 ? '<div class="card"><h2>Hub password</h2><p class="small mute" style="margin-top:0">Coordinators in Settings › Staff need it to open the hub. People listed in Settings › “Coordinator hub: no password needed for” go straight in.</p><div class="grid3"><input type="password" id="pwOld" placeholder="Current password"><input type="password" id="pwNew" placeholder="New password (8+)"><button class="btn" onclick="call(\'api_hubSetPassword\', $(\'pwNew\').value, $(\'pwOld\').value).then(function(b){B=b;toast(\'Password changed\')}).catch(fail)">Change password</button></div></div>' : '') +
+    '<div class="card"><h2>Settings</h2><p class="small">Every setting is in Settings: <b>Switches</b> (booking, emails, the waitlist, arriving and no-shows, the room), <b>Seats &amp; periods</b>, <b>Staff</b> and <b>My emails</b>. Change them there, not on the sheet. Bell times and the school calendar (days off) are on the sheet’s <b>Bell Schedules</b> and <b>Calendar</b> tabs; this year’s LT calendar is already in.</p></div>';
 }
 function coHide(v, h) { var l = (CO.prefs.hide || []).filter(function (x) { return x !== v; }); if (h) l.push(v); coPref('hide', l); }
 function coAdminLoad() {
-  call('api_room', CO.campus).then(function (r) { var el = $('roomAdmin'); if (el) el.innerHTML = (r.seating === false ? '<div class="banner info small">Assigned seating is <b>off</b> for this campus: students sit anywhere and no desks are given at check-in. To use desks, set Settings › Switches › “Assigned seating (numbered desks)” to Yes.</div>' : '') + '<div class="row"><span class="grow small">' + (r.chart ? '<b>' + r.desks.length + ' desks</b> in ' + esc(r.label) + (r.seats && r.seats !== r.desks.length ? ' · the Seats setting is ' + r.seats + ' (Testing Periods tab)' : '') : 'No room drawn yet for ' + esc(r.label) + '.') + '</span>' + (r.editUrl && CO.dash.edit ? '<a class="btn pri" href="' + esc(r.editUrl) + '" target="_blank">' + (r.chart ? 'Edit the room' : 'Draw the room') + '</a>' : '') + '</div>'; }).catch(function () {});
+  call('api_room', CO.campus).then(function (r) { var el = $('roomAdmin'); if (el) el.innerHTML = (r.seating === false ? '<div class="banner info small">Assigned seating is <b>off</b> for this campus: students sit anywhere and no desks are given at check-in. To use desks, set Settings › Switches › “Assigned seating (numbered desks)” to Yes.</div>' : '') + '<div class="row"><span class="grow small">' + (r.chart ? '<b>' + r.desks.length + ' desks</b> in ' + esc(r.label) + (r.seats && r.seats !== r.desks.length ? ' · the Seats setting is ' + r.seats + ' (Settings › Seats &amp; periods)' : '') : 'No room drawn yet for ' + esc(r.label) + '.') + '</span>' + (r.editUrl && CO.dash.edit ? '<a class="btn pri" href="' + esc(r.editUrl) + '" target="_blank">' + (r.chart ? 'Edit the room' : 'Draw the room') + '</a>' : '') + '</div>'; }).catch(function () {});
   call('api_imports').then(function (list) {
     var el = $('impHist'); if (!el) return;
     el.innerHTML = list.length ? '<table class="t small"><tr><th>When</th><th>What</th><th>File</th><th>Result</th><th>Status</th><th></th></tr>' + list.map(function (r, i) { var s = r.summary || {}; return '<tr><td>' + esc(new Date(r.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + '<div class="tiny mute">' + esc(r.by) + '</div></td><td>' + esc(r.mode) + ' · ' + esc(r.campus === 'B' ? 'both' : r.campus === 'N' ? 'North' : 'South') + '</td><td>' + esc(r.file) + '<div class="tiny mute">' + r.rows + ' rows</div></td><td>' + (s.hold ? esc(s.hold) : s.students ? '+' + s.students.add + ' students, ' + s.students.change + ' changed, ' + s.students.gone + ' not in roster · +' + s.enroll.add + ' / −' + s.enroll.drop + ' classes · ' + s.meaningful + ' schedule changes' : s.add !== undefined ? '+' + s.add + ' appointments, ' + s.update + ' updated, ' + s.unmatched + ' not matched' : '') + '</td><td>' + statusChip(r.status) + '</td><td>' + (r.kind === 'roster' && /applied/i.test(r.status) && B.roles.indexOf('admin') >= 0 && i === list.findIndex(function (x) { return x.kind === 'roster' && /applied/i.test(x.status); }) ? '<button class="btn sm bad" onclick="impUndo(\'' + r.id + '\')">Undo</button>' : '') + '</td></tr>'; }).join('') + '</table>' : '<div class="small mute">No imports yet.</div>';
