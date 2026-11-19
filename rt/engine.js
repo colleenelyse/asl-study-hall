@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.517';
+var VERSION = '4.519';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1942,7 +1942,8 @@ function doGet(e) {
   if (e && e.parameter && e.parameter.app === 'signin') return appSigninPage_(e.parameter.back);
   if (e && e.parameter && e.parameter.do === 'canvas' && typeof cvPage_ === 'function') return cvPage_();
   if (e && e.parameter && e.parameter.do === 'sizes') return sizesPage_();
-  if (e && e.parameter && e.parameter.do === 'camsexport') return camsExport_();      /* 4.516 the Teach the Camera samples to Claude (Drive folder) */
+  if (e && e.parameter && e.parameter.do === 'camsexport') return camsExport_();
+  if (e && e.parameter && e.parameter.do === 'stackcheck') return stackCheck_(e.parameter);      /* 4.518 one student's Stacker tests to Claude (Drive folder); fix= leaves questions out */      /* 4.516 the Teach the Camera samples to Claude (Drive folder) */
   if (e && e.parameter && e.parameter.do === 'timing') return timingPage_();      /* 4.511 where the time goes (teacher only) */      /* 4.510 how big each tab is (teacher only) */      /* 4.509 her /colleen link: Stackers to Canvas now (and every morning) */      /* 4.477 the phone app's Google sign-in; 4.482 back = spellbound / numberwise */
   var name = 'ASL Study';      /* 4.69 (Colleen: slow first load): only the remembered app name, so the page starts loading at once instead of waiting for every unit tab to be read */
   try { name = CacheService.getScriptCache().get('appName') || PropertiesService.getScriptProperties().getProperty('appName') || name; } catch (e) {}
@@ -12722,6 +12723,76 @@ function camsExport_() {
   folder.createFile('camera-samples-export.json', JSON.stringify(out), 'application/json');
   return msg('Done: ' + n + ' samples of ' + Object.keys(out.items).length + ' signs were copied to camera-samples-export.json in your "Sign Recordings for Avatar" Drive folder (dots only, no names or classes). You can close this page and tell Claude.');
 }
+/* 4.518 (Colleen: "monica d reported that she ran into problems doing the fingerspelling summative stacker. look for instances of technical error on her
+   test and give her those points back"): ?do=stackcheck&name=Monica D (teacher only) copies that student's Summative Stacker test records (every question,
+   answer, plays, reports and what happened, e.g. "did not play") into stacker-check.json in the "Sign Recordings for Avatar" folder for Claude to read.
+   &opp=<Stacker ID>&fix=3,7 then leaves those question numbers (1 = first) out of her score, as her Leave out button; the score is worked out again. */
+function stackCheck_(p) {
+  var msg = function (t) { return ContentService.createTextOutput(t); };
+  try { requireTeacher_(); } catch (e) { return msg('Only the teacher can use this page.'); }
+  if (str_(p.more)) {      /* 4.519 reopen practice for the finished tests that lost points to short practice (the scan below), and send each student a pop-up message */
+    var whos0 = str_(p.name).toLowerCase().replace(/\s+/g, ' ').split(',').map(function (x) { return x.trim(); }).filter(String); if (!whos0.length) return msg('Add &name= and the student names.');
+    return msg(lock_(function () { var mm = chMoreMap_(), lines = [], st = static_();
+      chWorkRows_().forEach(function (w) { var nm = str_(w.v[CHW.Name]); if (!whos0.some(function (x) { return nm.toLowerCase().replace(/\s+/g, ' ').indexOf(x) === 0; })) return;
+        var o = chOpp_(w.v[CHW.Opportunity]), t = chTest_(w); if (!o || o.sample || !t || !t.done || !t.unlock || str_(w.v[CHW.Total]) === '' || !(t.pts > num_(w.v[CHW['Test points']]) + 0.05)) return;
+        var until = /^\d{4}-\d\d-\d\d$/.test(str_(p.until)) ? str_(p.until) : '';      /* her own later deadline for this student's practice */
+        if (!chBefore_(o) && !until) { lines.push(nm + ' (' + o.title + '): the deadline has passed, so nothing was opened.'); return; }
+        var id = str_(w.v[0]), P = chPtsFor_(o), mp = num_(w.v[CHW['Mastery points']]), dn = chDays_(w).length, reach = Math.min(chDaysFor_(o), dn + (until || o.due ? Math.max(0, chDayNum_(until || dayStr_(o.due)) - chDayNum_(chToday_()) + 1) : chDaysFor_(o))), pp = Math.min(P.practice, reach * P.perDay), full = chTenth_(pp + mp + t.pts * Math.min(1, (pp + mp) / (P.practice + P.mastery)));      /* the most it can reach: one practice day a day until the deadline */
+        if (mm[id]) { lines.push(nm + ' (' + o.title + '): already open.'); return; }
+        mm[id] = { sent: num_(w.v[CHW.Total]), at: Date.now() }; if (until) mm[id].due = until;
+        var due = until ? Utilities.formatDate(new Date(until + 'T12:00:00'), 'America/Chicago', 'EEEE, MMMM d') : o.due ? Utilities.formatDate(new Date(o.due), 'America/Chicago', 'EEEE, MMMM d') : 'the deadline';
+        var note = 'Good news! Your teacher opened practice again for your ' + o.title + ' Summative Stacker. Your test went well (' + str_(w.v[CHW['Test score']]) + '), but you had ' + chDays_(w).length + ' of ' + chDaysFor_(o) + ' practice days, so it counted for less. Every practice day you earn by ' + due + ' now raises your score: it is ' + num_(w.v[CHW.Total]) + ' now and can reach about ' + full + ' / ' + P.max + ' if you earn a practice day every day until then.';
+        ensureTab_(TODO_TAB, TODO_HEAD, [110, 130, 140, 80, 80, 70, 110, 120, 300, 70, 60]).sheet.appendRow([Utilities.getUuid().slice(0, 8), '@' + str_(w.v[CHW.Email]).toLowerCase(), new Date(), 'note', '', '', '', '', note.slice(0, 300), 'yes', 'yes']);
+        lines.push(nm + ' (' + o.title + ', ' + num_(w.v[CHW.Total]) + ' now, up to about ' + full + '): practice is open until ' + due + ', and this message was sent: "' + note + '"'); });
+      chMoreSave_(mm); chBump_(); return lines.length ? 'Done:\n\n' + lines.join('\n\n') + '\n\nNew scores go to Canvas by themselves the next morning. You can close this page and tell Claude.' : 'No matching finished tests that lost points to short practice.'; }));
+  }
+  if (str_(p.scan) === 'unlock') {      /* 4.518 list only: finished tests that lost test points because practice/mastery were short (Caylee K's 0) */
+    var opps = {}; chOpps_().forEach(function (o) { opps[o.id] = o; }); var list = [];
+    chWorkRows_().forEach(function (w) { var o = opps[str_(w.v[CHW.Opportunity])]; if (!o || o.sample || str_(w.v[CHW.Total]) === '') return; var t = chTest_(w); if (!t || !t.unlock || !t.done) return;
+      var P = chPtsFor_(o), sp = num_(w.v[CHW['Practice points']]) + num_(w.v[CHW['Mastery points']]), full = P.practice + P.mastery, tp = num_(w.v[CHW['Test points']]); if (!(t.pts > tp + 0.05)) return;
+      list.push({ name: str_(w.v[CHW.Name]), cls: str_(w.v[CHW.Class]), stacker: o.title, opp: o.id, score: str_(w.v[CHW['Test score']]), days: chDays_(w).length, need: chDaysFor_(o), mastery: str_(w.v[CHW['Mastery %']]), study: sp + ' / ' + full, testPts: tp, testFull: t.pts, total: num_(w.v[CHW.Total]), max: P.max, inCanvas: !!str_(w.v[CHW['Entered in gradebook']]) }); });
+    list.sort(function (a, b) { return a.total - b.total; });
+    var h = function (x) { return String(x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    try { var fo = DriveApp.getFolderById(CAMS_EXPORT_FOLDER), it2 = fo.getFilesByName('stacker-unlock-scan.json'); while (it2.hasNext()) it2.next().setTrashed(true); fo.createFile('stacker-unlock-scan.json', JSON.stringify(list), 'application/json'); } catch (e) {}
+    return HtmlService.createHtmlOutput('<div style="font:15px system-ui;padding:16px"><h2>Tests that lost points because practice was short (' + list.length + ')</h2><p>Nothing was changed. Test points = what the test earned with their practice; full = what it would earn with all practice days.</p><table border="1" cellpadding="5" style="border-collapse:collapse"><tr><th>Student</th><th>Class</th><th>Stacker</th><th>Test</th><th>Practice days</th><th>Mastery %</th><th>Test points</th><th>Total now</th><th>In Canvas</th></tr>' +
+      list.map(function (r) { return '<tr><td>' + h(r.name) + '</td><td>' + h(r.cls) + '</td><td>' + h(r.stacker) + '</td><td>' + h(r.score) + '</td><td>' + r.days + ' of ' + r.need + '</td><td>' + h(r.mastery) + '</td><td>' + r.testPts + ' (full ' + r.testFull + ')</td><td><b>' + r.total + '</b> / ' + r.max + '</td><td>' + (r.inCanvas ? 'yes' : 'not yet') + '</td></tr>'; }).join('') + '</table><p>You can close this page and tell Claude.</p></div>').setTitle('Stacker check');
+  }
+  var who = str_(p.name).toLowerCase().replace(/\s+/g, ' ').trim(); if (!who) return msg('Add &name= and the student name to the link.');
+  var whos = who.split(',').map(function (x) { return x.trim(); }).filter(String);
+  var rows = chWorkRows_().filter(function (w) { var nm = str_(w.v[CHW.Name]).toLowerCase().replace(/\s+/g, ' '); return whos.some(function (x) { return nm.indexOf(x) === 0; }); });
+  if (!rows.length) return msg('No Summative Stacker rows for "' + p.name + '".');
+  if (str_(p.days)) {      /* 4.518 her "give her practice days by hand" (Caylee K): days= practice days given, the total worked out again, and Canvas updated when it still has the old score the app sent */
+    return msg(lock_(function () { var w = chWorkRows_().filter(function (x) { return str_(x.v[CHW.Opportunity]) === str_(p.opp) && str_(x.v[CHW.Name]).toLowerCase().replace(/\s+/g, ' ').indexOf(whos[0]) === 0; })[0];
+      if (!w) return 'That Stacker row was not found.'; var t = chTest_(w), opp = chOpp_(w.v[CHW.Opportunity]); if (!t || !t.done || str_(w.v[CHW.Total]) === '') return 'That test is not finished yet.';
+      var P = chPtsFor_(opp), n = Math.max(0, Math.min(chDaysFor_(opp), Math.round(num_(p.days)))), d = str_(p.dates) ? str_(p.dates).split(',') : [], old = num_(w.v[CHW.Total]);
+      chSet_(w, 'Practice days', d.slice(0, n).join(', ')); w.v[CHW['Practice points']] = chTenth_(P.perDay * n);
+      w.v[CHW['Teacher note']] = (str_(w.v[CHW['Teacher note']]) ? str_(w.v[CHW['Teacher note']]) + ' ' : '') + n + ' practice days given by hand (Colleen, ' + Utilities.formatDate(new Date(), 'America/Chicago', 'yyyy-MM-dd') + ').';
+      chRefigure_(w, t); chPut_(w, t); chSaveRow_(w); var total = num_(w.v[CHW.Total]), cv = '';
+      try { var c = cvParse_(opp.canvas); if (c && str_(w.v[CHW['Entered in gradebook']])) { var em = str_(w.v[CHW.Email]).toLowerCase(), by = cvStudents_(c), u = by[em] || by[em.split('@')[0]];
+          if (!u) cv = ' Canvas: student not found, enter it by hand.'; else { var cur = null; cvFetch_(c.base, '/api/v1/courses/' + c.course + '/assignments/' + c.asg + '/submissions?per_page=100').forEach(function (x) { if (x.user_id === u.id) cur = x.score; });
+            if (cur === null || num_(cur) === old) { cvFetch_(c.base, '/api/v1/courses/' + c.course + '/assignments/' + c.asg + '/submissions/' + u.id, 'put', { 'submission[posted_grade]': String(total) }); chSet_(w, 'Entered in gradebook', new Date()); cv = ' Canvas now has ' + total + '.'; }
+            else cv = ' Canvas has ' + cur + ' (not the app\'s ' + old + '), so it was left alone: enter it by hand.'; } } } catch (e) { cv = ' Canvas could not be updated (' + e.message + '): enter it by hand.'; }
+      return 'Done: ' + str_(w.v[CHW.Name]) + ' now has ' + n + ' practice days, ' + w.v[CHW['Practice points']] + ' practice points, ' + w.v[CHW['Test points']] + ' test points, total ' + total + ' (was ' + old + ').' + cv; }));
+  }
+  if (str_(p.fix)) {
+    var nums = str_(p.fix).split(',').map(function (x) { return Math.round(num_(x)) - 1; }).filter(function (x) { return x >= 0; });
+    return msg(lock_(function () { var w = chWorkRows_().filter(function (x) { return str_(x.v[CHW.Opportunity]) === str_(p.opp) && str_(x.v[CHW.Name]).toLowerCase().replace(/\s+/g, ' ').indexOf(whos[0]) === 0; })[0];
+      if (!w) return 'That Stacker row was not found.'; var t = chTest_(w); if (!t || !t.qs) return 'No test on that row.'; var before = str_(w.v[CHW['Test score']]) + ' (total ' + str_(w.v[CHW.Total]) + ')', k = 0;
+      nums.forEach(function (i) { var q = t.qs[i]; if (!q || q.fx === 'void') return; q.fx = 'void'; chLog_(t, i, 'teacher', 'void: technical problem (Colleen, 4.518)'); k++; });
+      if (k) { chRefigure_(w, t); chPut_(w, t); chSaveRow_(w); }
+      return 'Done: ' + k + ' question(s) left out for ' + str_(w.v[CHW.Name]) + '. Test score was ' + before + ', now ' + str_(w.v[CHW['Test score']]) + ' (total ' + str_(w.v[CHW.Total]) + '). You can close this page and tell Claude.'; }));
+  }
+  var out = { made: new Date().toISOString(), rows: rows.map(function (w) { var o = {}; CHW_HEAD.forEach(function (h, j) { if (h !== 'Email' && h !== 'Test') o[h] = w.v[j] instanceof Date ? w.v[j].toISOString() : w.v[j]; });
+    var opp = chOpp_(w.v[CHW.Opportunity]); o.opp = opp ? { name: opp.name, skill: opp.skill, nq: opp.nq } : null; o.test = chTest_(w);
+    try { var c = opp && cvParse_(opp.canvas); if (c) { var em = str_(w.v[CHW.Email]).toLowerCase(), by = cvStudents_(c), u = by[em] || by[em.split('@')[0]], a = cvFetch_(c.base, '/api/v1/courses/' + c.course + '/assignments/' + c.asg);
+        o.canvas = { link: opp.canvas, asg: a && a.name, points: a && a.points_possible, published: a && a.published, postManually: a && a.post_manually, found: !!u };
+        if (u) { var sb = cvFetch_(c.base, '/api/v1/courses/' + c.course + '/assignments/' + c.asg + '/submissions/' + u.id); o.canvas.sub = sb && { score: sb.score, grade: sb.grade, state: sb.workflow_state, posted: sb.posted_at, graded: sb.graded_at, missing: sb.missing, late: sb.late, excused: sb.excused }; } } } catch (e) { o.canvasErr = e.message; }
+    return o; }), canvasLast: parse_(PropertiesService.getScriptProperties().getProperty('canvasLast'), null),
+    opps: chOpps_().map(function (o) { return { id: o.id, title: o.title, skill: o.skill, due: o.due, canvas: !!o.canvas, sample: !!o.sample }; }) };
+  var folder = DriveApp.getFolderById(CAMS_EXPORT_FOLDER), it = folder.getFilesByName('stacker-check.json'); while (it.hasNext()) it.next().setTrashed(true);
+  folder.createFile('stacker-check.json', JSON.stringify(out), 'application/json');
+  return msg('Done: ' + rows.length + ' Summative Stacker row(s) for ' + rows.map(function (w) { return str_(w.v[CHW.Name]); }).filter(function (x, i, a) { return a.indexOf(x) === i; }).join(', ') + ' were copied to stacker-check.json in your "Sign Recordings for Avatar" Drive folder. You can close this page and tell Claude.');
+}
 /** Teacher: which classes have Teach the Camera on Home. */
 function api_camSampAssign(auth, list) { requireTeacher_(); var names = static_().classes.map(function (c) { return c.name; }), v = (list instanceof Array ? list : []).map(str_).filter(function (x) { return names.indexOf(x) >= 0; }); PropertiesService.getDocumentProperties().setProperty('camsAssign', JSON.stringify(v)); return { ok: true, list: v }; }
 function camsAssigned_() { return parse_(PropertiesService.getDocumentProperties().getProperty('camsAssign'), []) || []; }
@@ -12747,7 +12818,8 @@ function todoRows_() {
 /** A student's open items (their class or every class), with their progress. */
 function todoFor_(o) {
   var mine = (o.Bests && o.Bests.todo) || {}, cls = str_(o.Class);
-  return { items: todoRows_().filter(function (x) { return !x.cls || x.cls === cls; }).map(function (x) { var p = mine[x.id] || {}; return { id: x.id, sent: x.sent, kind: x.kind, q: x.q, m: x.m, act: x.act, opp: x.opp, note: x.note, pop: x.pop, did: { q: p.q || 0, s: p.s || 0 }, done: !!p.done, seen: !!p.seen }; }), last: (o.Bests && o.Bests.lastP) || {} };      /* last: the day letters / numbers were last practiced (refreshers) */
+  var me1 = '@' + str_(o.Email).toLowerCase();      /* 4.519 a message to one student: Class = @their email */
+  return { items: todoRows_().filter(function (x) { return !x.cls || x.cls === cls || x.cls.toLowerCase() === me1; }).map(function (x) { var p = mine[x.id] || {}; return { id: x.id, sent: x.sent, kind: x.kind, q: x.q, m: x.m, act: x.act, opp: x.opp, note: x.note, pop: x.pop, did: { q: p.q || 0, s: p.s || 0 }, done: !!p.done, seen: !!p.seen }; }), last: (o.Bests && o.Bests.lastP) || {} };      /* last: the day letters / numbers were last practiced (refreshers) */
 }
 /** After a round: questions and seconds count toward every open work item (one activity's items only for that activity). */
 function todoTick_(o, game, nQ, secs) {
