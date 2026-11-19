@@ -1560,7 +1560,7 @@ key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.
 Object.assign(key.shadow.camera, { left: -0.15, right: 0.15, top: 0.2, bottom: -0.1, near: 0.1, far: 3 }); key.shadow.camera.updateProjectionMatrix();
 /* ---- the painted skin (GLSL). Units: vRest is millimetres in the resting hand ---- */
 const SKIN = 0xc68c6c;
-const SKU = { skOcc: { value: 0 }, skDbg: { value: 0 }, pCol: { value: null }, pMicro: { value: null }, pMicroMM: { value: 30 }, pNail: { value: null }, pPolish: { value: new THREE.Vector4(0.8, 0.1, 0.2, 0) }, pDet: { value: null }, pBox: { value: new THREE.Vector3(0, 0, 1) }, pBump: { value: 0.00038 }, skPalm: { value: new THREE.Vector3(1, 1, 1) }, skRed: { value: 0.5 }, skSSS: { value: new THREE.Vector3() }, skEdge: { value: new THREE.Vector3() }, skEdgeK: { value: 1 }, skRim: { value: new THREE.Vector3() }, skO: { value: new THREE.Vector3() }, skAx: { value: new THREE.Vector3(1, 0, 0) }, skW: { value: new THREE.Vector2(80, 90) } };      /* palm coordinates, filled in by skin() */
+const SKU = { skBend: { value: new Array(12).fill(0) }, skCut: { value: new THREE.Vector2(-9999, 1) }, skOcc: { value: 0 }, skDbg: { value: 0 }, pCol: { value: null }, pMicro: { value: null }, pMicroMM: { value: 30 }, pNail: { value: null }, pPolish: { value: new THREE.Vector4(0.8, 0.1, 0.2, 0) }, pDet: { value: null }, pBox: { value: new THREE.Vector3(0, 0, 1) }, pBump: { value: 0.00038 }, skPalm: { value: new THREE.Vector3(1, 1, 1) }, skRed: { value: 0.5 }, skSSS: { value: new THREE.Vector3() }, skEdge: { value: new THREE.Vector3() }, skEdgeK: { value: 1 }, skRim: { value: new THREE.Vector3() }, skO: { value: new THREE.Vector3() }, skAx: { value: new THREE.Vector3(1, 0, 0) }, skW: { value: new THREE.Vector2(80, 90) } };      /* palm coordinates, filled in by skin() */
 const SKIN_HEAD = `#define SK_OCT ${LIGHT ? 2 : 4}
 varying vec3 vRest; varying vec4 vSk; varying vec4 vTone; uniform vec3 skO; uniform vec3 skAx; uniform vec2 skW; uniform vec3 skPalm; uniform float skRed; uniform vec3 skSSS; uniform vec3 skEdge; uniform float skEdgeK; uniform vec3 skRim; uniform float skDbg; uniform float pBump; uniform sampler2D pCol; uniform sampler2D pMicro; uniform float pMicroMM; varying vec3 vRN; uniform sampler2D pNail; uniform vec4 pPolish; uniform sampler2D pDet; uniform vec3 pBox;
 float skinH = 0.0; float skinRough = 0.0;
@@ -1576,7 +1576,10 @@ const SKIN_COLOR = `{
   vec2 uv = clamp((P.xy - pBox.xy) / pBox.z, 0.001, 0.999);
   float wb = smoothstep(-0.3, 0.3, back), palmSide = 1.0 - wb;
   vec2 uP = vec2(uv.x * 0.5, uv.y), uB = vec2(0.5 + uv.x * 0.5, uv.y);
-  vec4 cc = mix(texture2D(pCol, uP), texture2D(pCol, uB), wb), dd = mix(texture2D(pDet, uP), texture2D(pDet, uB), wb);
+  /* STRETCHED SKIN (Colleen 2026-11-19: the knuckle lines "look like pixelation" when the fingers bend): over a bent knuckle the skin is pulled tight, so
+     its wrinkles flatten out, as on a real hand. How stretched: how far apart neighbouring pixels are now, against how far apart they were at rest. */
+  float stK = vKn * (1.0 - smoothstep(4.0, 9.0, abs(vSk.y))) * wb;      /* vKn: how far this knuckle is bent (vertex shader); only near the knuckle, only on the back */
+  vec4 cc = mix(texture2D(pCol, uP), mix(texture2D(pCol, uB), texture2D(pCol, uB, 3.0), stK), wb), dd = mix(texture2D(pDet, uP), mix(texture2D(pDet, uB), texture2D(pDet, uB, 3.0), stK), wb);
   vec3 c = diffuseColor.rgb * cc.rgb * 1.5;      /* the painted picture changes the chosen tone */
   c = mix(c, c * skPalm, palmSide * 0.8);
   c = mix(c, c * vec3(0.92, 0.86, 0.82), wb * 0.6);
@@ -1613,7 +1616,7 @@ const SKIN_COLOR = `{
   float ridges = (0.5 + 0.5 * sin(rPh)) * fadeFine(P * 2.2) * palmSide * (1.0 - nail);
   float da = dot(Pw.xy, vec2(0.82, 0.57)) / 1.3, db = dot(Pw.xy, vec2(-0.82, 0.57)) / 1.3;
   float fa = 1.0 - smoothstep(0.0, 0.2, min(fract(da), 1.0 - fract(da))), fb = 1.0 - smoothstep(0.0, 0.2, min(fract(db), 1.0 - fract(db)));
-  float furrows = (max(fa, fb * (0.6 + 0.4 * vnoise(P * 0.8))) - fa * fb * 0.6) * fadeFine(P * 2.4) * wb * (1.0 - nail);      /* no bright dot where two furrows cross (the pale specks, 2026-11-19) */
+  float furrows = (max(fa, fb * (0.6 + 0.4 * vnoise(P * 0.8))) - fa * fb * 0.6) * fadeFine(P * 2.4) * wb * (1.0 - nail) * (1.0 - stK * 0.7);      /* no bright dot where two furrows cross (the pale specks, 2026-11-19) */
   c *= 1.0 - furrows * 0.13 - ridges * 0.045;      /* the back's furrows mostly as soft shading, little bump (bumps there made pale specks) */      /* a touch of shadow down in the furrows and pores */
   if (skDbg > 1.5) c = vec3(clamp(tf, 0.0, 1.0), nail, clamp(back, 0.0, 1.0) * 0.5);
   diffuseColor.rgb = c;
@@ -1735,17 +1738,17 @@ function dressHand(g) {
       /* "a real hand printed on the glove": no nails, no new shapes; the skin is PAINTED in the shader from values worked out once at rest in skin(),
          so pores, knuckle wrinkles, palm lines and creases all bend with the fingers */
       o.material = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(SKIN).convertSRGBToLinear(), roughness: 0.68, clearcoat: 0.02, clearcoatRoughness: 0.45, reflectivity: 0.28, envMapIntensity: 0.45, skinning: true, side: THREE.DoubleSide });
-      o.material.extensions = { derivatives: true };
+      o.material.extensions = { derivatives: true }; o.material.transparent = true;      /* for the soft wrist fade */
       o.material.onBeforeCompile = sh => {
         Object.assign(sh.uniforms, SKU);
         sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin.replace('getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] )', 'mix(getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ), 1.0, clamp(vTone.z, 0.0, 1.0))'));
-        sh.vertexShader = sh.vertexShader.replace('void main() {', 'attribute vec3 rest; attribute vec4 sk; attribute vec4 tone; varying vec3 vRest; varying vec4 vSk; varying vec4 vTone; attribute vec3 rn; varying vec3 vRN; attribute float occ; varying float vOcc;\nvoid main() {\n vRest = rest; vSk = sk; vTone = tone; vRN = rn; vOcc = occ;');
-        sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'varying float vOcc; uniform float skOcc;\n' + SKIN_HEAD + '\n' + NAIL_SHAPE + '\nvoid main() {')
+        sh.vertexShader = sh.vertexShader.replace('void main() {', 'attribute vec3 rest; attribute vec4 sk; attribute vec4 tone; varying vec3 vRest; varying vec4 vSk; varying vec4 vTone; attribute vec3 rn; varying vec3 vRN; attribute float occ; varying float vOcc; attribute float jid; uniform float skBend[12]; varying float vKn;\nvoid main() {\n vRest = rest; vSk = sk; vTone = tone; vRN = rn; vOcc = occ; vKn = 0.0; if (jid > -0.5) { int ji = int(jid + 0.5); for (int i = 0; i < 12; i++) if (i == ji) vKn = smoothstep(12.0, 65.0, skBend[i]); }');
+        sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'varying float vOcc; uniform float skOcc; uniform vec2 skCut; varying float vKn;\n' + SKIN_HEAD + '\n' + NAIL_SHAPE + '\nvoid main() {')
           .replace('#include <color_fragment>', '#include <color_fragment>\n' + SKIN_COLOR)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor + skinRough, 0.45, 0.9);')
           .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + SKIN_BUMP)
           .replace('#include <lights_fragment_end>', SKIN_SSS + '\n' + SKIN_OCC + '\n#include <lights_fragment_end>')
-          .replace('#include <dithering_fragment>', 'float ndv = abs(dot(normalize(normal), normalize(vViewPosition)));\n float rim = 1.0 - smoothstep(0.04, 0.6, ndv);\n gl_FragColor.rgb *= mix(vec3(1.0), skEdge, rim * skEdgeK);\n gl_FragColor.rgb += rim * rim * skRim;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.0, 1.0, 0.0), clamp(vTone.z, 0.0, 1.0) * skDbg);\n#include <dithering_fragment>');      /* soft warm outline, so a thumb crossing the fingers still stands out */
+          .replace('#include <dithering_fragment>', 'float ndv = abs(dot(normalize(normal), normalize(vViewPosition)));\n float rim = 1.0 - smoothstep(0.04, 0.6, ndv);\n gl_FragColor.rgb *= mix(vec3(1.0), skEdge, rim * skEdgeK);\n gl_FragColor.rgb += rim * rim * skRim;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.0, 1.0, 0.0), clamp(vTone.z, 0.0, 1.0) * skDbg);\n float cutA = smoothstep(skCut.x, skCut.x + skCut.y, vRest.y); if (cutA < 0.999 && !gl_FrontFacing) discard; gl_FragColor.a *= cutA;\n#include <dithering_fragment>');      /* the wrist fades away softly instead of ending in a flat cut (2026-11-19) */      /* soft warm outline, so a thumb crossing the fingers still stands out */
       }; o.frustumCulled = false; o.castShadow = true; o.receiveShadow = true; } });
   Object.values(H.bones).forEach(b => { b.userData.q0 = b.quaternion.clone(); });
   setup(root);
@@ -1962,9 +1965,10 @@ function shapeFingers() {
   for (let it = 0; it < 8; it++) { step(0.5); step(-0.53); }
   pos.needsUpdate = true; g.computeVertexNormals();
 }
-let GKEY = 'f', CACHED = null; const GEO_VER = 'g2';      /* change it whenever the skin is built differently, so a page holding an older hand never hands this one its old skin */
+function setCut(g) { const r = g.attributes.rest; if (!r) return; let lo = 1e9, hi = -1e9; for (let v = 0; v < r.count; v++) { const y = r.getY(v); if (y < lo) lo = y; if (y > hi) hi = y; } SKU.skCut.value.set(lo + 2, Math.max(8, (hi - lo) * 0.13)); }      /* the lowest 2 mm are gone, then about 13% of the hand's height fades in */
+let GKEY = 'f', CACHED = null; const GEO_VER = 'g3';      /* change it whenever the skin is built differently, so a page holding an older hand never hands this one its old skin */
 function skin() {
-  if (CACHED) { SKU.skO.value.copy(CACHED.sku[0]); SKU.skAx.value.copy(CACHED.sku[1]); SKU.skW.value.copy(CACHED.sku[2]); paintIt(CACHED.lines, CACHED.W); makeNails(); return; }
+  if (CACHED) { SKU.skO.value.copy(CACHED.sku[0]); SKU.skAx.value.copy(CACHED.sku[1]); SKU.skW.value.copy(CACHED.sku[2]); paintIt(CACHED.lines, CACHED.W); makeNails(); setCut(H.mesh.geometry); return; }
   shapeFingers();
   const mesh = H.mesh, g = mesh.geometry, pos = g.attributes.position, nor = g.attributes.normal, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, bones = mesh.skeleton.bones, n = pos.count;
   const rnA = new Float32Array(n * 3), rest = new Float32Array(n * 3), sk = new Float32Array(n * 4), tone = new Float32Array(n * 4);
@@ -1987,7 +1991,7 @@ function skin() {
   const thenar = p => { const t = Math.max(0, Math.min(1, p.clone().sub(tA).dot(tD) / tL)), d = p.distanceTo(tA.clone().add(tD.clone().multiplyScalar(t * tL))) * 1000; return 1 - Math.max(0, Math.min(1, (d - 36) / 12)); };
   const zMid = (W.z + iK.z + pK.z + wp('middle-finger-phalanx-proximal').z) / 4;      /* the middle of the palm's thickness: the back of the hand is behind it (the rest normals alone mixed the two sides up, so the back showed the palm painting: no veins) */
   const thumbBack = wp('thumb-phalanx-proximal').sub(wp('index-finger-phalanx-proximal')).normalize().add(palm.clone().multiplyScalar(-0.35));
-  const NF = [], NU = new Float32Array(n), NJ = {}, NE = {}, DSP = new Float32Array(n), TH = new Float32Array(n);
+  const JID = new Float32Array(n), NF = [], NU = new Float32Array(n), NJ = {}, NE = {}, DSP = new Float32Array(n), TH = new Float32Array(n);
   for (let v = 0; v < n; v++) {
     const p = new THREE.Vector3().fromBufferAttribute(pos, v); mesh.boneTransform(v, p); p.applyMatrix4(mesh.matrixWorld);
     const nw = new THREE.Vector3().fromBufferAttribute(nor, v).applyMatrix3(nm).normalize();
@@ -1995,7 +1999,7 @@ function skin() {
     rest[v * 3] = (p.x - W.x) * 1000; rest[v * 3 + 1] = (p.y - W.y) * 1000; rest[v * 3 + 2] = (p.z - W.z) * 1000;
     const name = domBone(v); let f = FING.concat(['thumb']).find(x => name.indexOf(x) === 0);
     if (!f) { let bd = 1e9; FING.forEach(x => { const d = p.distanceTo(lines[x].pts[1]); if (d < bd) { bd = d; f = x; } }); }      /* palm: measure from the nearest finger, so creases at the base of the fingers stay smooth */
-    let u = -99, jd = 99, jw = 0, back = Math.max(-1, Math.min(1, -(p.z - zMid) * 1000 / 7)) * 0.6 - nw.z * 0.4, red = 0, finger = 0, tipF = 9;
+    let jj = -1, u = -99, jd = 99, jw = 0, back = Math.max(-1, Math.min(1, -(p.z - zMid) * 1000 / 7)) * 0.6 - nw.z * 0.4, red = 0, finger = 0, tipF = 9;
     if (f) {
       const L = lines[f]; let best = 1e9;
       for (let k = 1; k < L.pts.length; k++) {
@@ -2006,7 +2010,7 @@ function skin() {
           const np = nw.clone().sub(d.clone().multiplyScalar(nw.dot(d)));      /* painted try: which way the skin faces round the finger, from its normal (steady even at the fingertip, where the line from the bone wobbles) */
           if (name.indexOf(f) === 0) { const bf = np.length() > 0.12 ? np.normalize().dot(bk) : radial.dot(bk); if (u > -4) back = bf; else if (f === 'thumb' && u > -40) { const k = Math.min(1, (u + 40) / 30); back = back + (bf - back) * k * k * (3 - 2 * k); } } }      /* the thumb's back blends into the back of the hand gradually (Colleen: a seam across the thumb, turned around) */
       }
-      L.joints.forEach(([x, w]) => { if (Math.abs(u - x) < Math.abs(jd)) { jd = u - x; jw = w; } });
+      L.joints.forEach(([x, w], ji) => { if (Math.abs(u - x) < Math.abs(jd)) { jd = u - x; jw = w; jj = ji; } });
       if (u < -6) jw *= Math.max(0, 1 + (u + 6) / 6);
       finger = u > -3 && name.indexOf(f) === 0 ? 1 : 0;
       if (finger) { tipF = -1; NF[v] = f; NU[v] = u; NJ[f] = L.us[L.us.length - 2]; NE[f] = Math.max(NE[f] || -1e9, u); }      /* nails: measured after this loop, from the real end of each finger */
@@ -2038,7 +2042,7 @@ function skin() {
         if (!finger) for (let i = 0; i < 3; i++) { const Mk = lines[['index-finger', 'middle-finger', 'ring-finger'][i]].pts[1].clone().add(lines[['middle-finger', 'ring-finger', 'pinky-finger'][i]].pts[1]).multiplyScalar(0.5), d = p.distanceTo(Mk) * 1000; dsp -= 0.0006 * bk * Math.exp(-d * d / 30); }      /* dips between the knuckles */
       }
       DSP[v] = dsp; TH[v] = thenar(p) * (back < 0.4 ? 1 : 0); }
-    sk[v * 4] = u; sk[v * 4 + 1] = jd; sk[v * 4 + 2] = back; sk[v * 4 + 3] = jw;
+    sk[v * 4] = u; sk[v * 4 + 1] = jd; sk[v * 4 + 2] = back; sk[v * 4 + 3] = jw; JID[v] = f && FING.indexOf(f) >= 0 && jj >= 0 ? FING.indexOf(f) * 3 + jj : -1;
     tone[v * 4] = red; tone[v * 4 + 1] = finger * (f === 'thumb' ? 2 : 1); tone[v * 4 + 2] = thenar(p); tone[v * 4 + 3] = tipF;
   }
   SKU.skO.value.copy(pK).sub(W).multiplyScalar(1000); SKU.skAx.value.copy(ax); SKU.skW.value.set(axL * 1000, kY * 1000);
@@ -2066,8 +2070,8 @@ function skin() {
   { const pa = g.attributes.position, na = g.attributes.normal; for (let v = 0; v < n; v++) if (DSP[v]) pa.setXYZ(v, pa.getX(v) + na.getX(v) * DSP[v], pa.getY(v) + na.getY(v) * DSP[v], pa.getZ(v) + na.getZ(v) * DSP[v]);
     pa.needsUpdate = true; g.computeVertexNormals(); }      /* the padded shape, then smooth shading over it */
   paintIt(lines, W);
-  g.setAttribute('rest', new THREE.BufferAttribute(rest, 3)); g.setAttribute('rn', new THREE.BufferAttribute(rnA, 3)); g.setAttribute('sk', new THREE.BufferAttribute(sk, 4)); g.setAttribute('tone', new THREE.BufferAttribute(tone, 4)); g.setAttribute('occ', new THREE.BufferAttribute(new Float32Array(n), 1));      /* contact shadows (see occUpdate) */
-  makeNails();
+  g.setAttribute('rest', new THREE.BufferAttribute(rest, 3)); g.setAttribute('rn', new THREE.BufferAttribute(rnA, 3)); g.setAttribute('sk', new THREE.BufferAttribute(sk, 4)); g.setAttribute('tone', new THREE.BufferAttribute(tone, 4)); g.setAttribute('occ', new THREE.BufferAttribute(new Float32Array(n), 1)); g.setAttribute('jid', new THREE.BufferAttribute(JID, 1));      /* which knuckle each point is nearest (for skBend) */      /* contact shadows (see occUpdate) */
+  makeNails(); setCut(g);
   window.__FSHandGeo[GKEY] = { geo: g.clone(), sku: [SKU.skO.value.clone(), SKU.skAx.value.clone(), SKU.skW.value.clone()], lines, W };
 }
 /* NAILS as their own thin plates (Colleen 2026-11-18: "the nails look terrible, especially the thumb ... strive for even more realistic"): the skin
@@ -2160,7 +2164,7 @@ let dirty = true;      /* the picture needs drawing again */
 const TRY_T = (() => { const q = new URLSearchParams(location.search), L = q.get('tl'), t = q.get('tt'); return L && t ? { L: L.toUpperCase(), t: t.split(',').map(Number) } : null; })();      /* test page only: try a thumb for one letter */
 function tryE() { if (TRY_T && POSE[TRY_T.L]) POSE[TRY_T.L].t = TRY_T.t; if (!TRY_E || !POSE.E) return; if (TRY_E.f) POSE.E.f = [0, 1, 2, 3].map(i => TRY_E.f.length >= 12 ? TRY_E.f.slice(i * 3, i * 3 + 3).concat([0]) : TRY_E.f.concat([0]).slice(0, 4)); if (TRY_E.t) POSE.E.t = TRY_E.t; }
 function apply(p) {
-  dirty = true; if (H === H1) { occSince = performance.now(); occAt = 0; }
+  dirty = true; if (H === H1) { occSince = performance.now(); occAt = 0; const sb = SKU.skBend.value; for (let i = 0; i < 4; i++) for (let k = 0; k < 3; k++) sb[i * 3 + k] = (p.f[i] && p.f[i][k]) || 0; }
   FING.forEach((f, i) => {
     const a = p.f[i], b1 = H.bones[f + '-phalanx-proximal'], b2 = H.bones[f + '-phalanx-intermediate'], b3 = H.bones[f + '-phalanx-distal'];
     b1.quaternion.copy(b1.userData.q0).multiply(qa(b1.userData.spread, -((a[3] || 0) + TOG[i]))).multiply(qa(b1.userData.bend, a[0])).multiply(qa(b1.userData.twist, a[5] || 0));      /* optional 6th value: the finger twists on its own length (the 0 in 30-90: Colleen) */
