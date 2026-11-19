@@ -1557,7 +1557,7 @@ const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 10);
 const hemi = new THREE.HemisphereLight(0xffffff, 0x998877, 0.2); scene.add(hemi);
 const key = new THREE.DirectionalLight(0xfff4ea, 2.3); key.position.set(-0.35, 0.8, 1); scene.add(key);
 key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0006; key.shadow.normalBias = 0.0025;      /* painted try: no shadow specks where skin meets skin (thumb base) */ key.shadow.radius = 4;
-Object.assign(key.shadow.camera, { left: -0.15, right: 0.15, top: 0.2, bottom: -0.1, near: 0.1, far: 3 }); key.shadow.camera.updateProjectionMatrix();
+Object.assign(key.shadow.camera, { left: -0.17, right: 0.17, top: 0.22, bottom: -0.2, near: 0.1, far: 3 });      /* reaches the bottom of the wrist (a sideways hand showed a straight line where shadows stopped, 2026-11-19) */ key.shadow.camera.updateProjectionMatrix();
 /* ---- the painted skin (GLSL). Units: vRest is millimetres in the resting hand ---- */
 const SKIN = 0xc68c6c;
 const SKU = { skBend: { value: new Array(12).fill(0) }, skCut: { value: new THREE.Vector2(-9999, 1) }, skOcc: { value: 0 }, skDbg: { value: 0 }, pCol: { value: null }, pMicro: { value: null }, pMicroMM: { value: 30 }, pNail: { value: null }, pPolish: { value: new THREE.Vector4(0.8, 0.1, 0.2, 0) }, pDet: { value: null }, pBox: { value: new THREE.Vector3(0, 0, 1) }, pBump: { value: 0.00038 }, skPalm: { value: new THREE.Vector3(1, 1, 1) }, skRed: { value: 0.5 }, skSSS: { value: new THREE.Vector3() }, skEdge: { value: new THREE.Vector3() }, skEdgeK: { value: 1 }, skRim: { value: new THREE.Vector3() }, skO: { value: new THREE.Vector3() }, skAx: { value: new THREE.Vector3(1, 0, 0) }, skW: { value: new THREE.Vector2(80, 90) } };      /* palm coordinates, filled in by skin() */
@@ -1619,13 +1619,13 @@ const SKIN_COLOR = `{
   float da = dot(Pd.xy, ua) / (1.15 + 0.5 * vnoise(P * 0.15 + 9.0)), db = dot(Pd.xy, ub) / (1.15 + 0.5 * vnoise(P * 0.15 + 13.0));
   float fwa = fwidth(da), fwb = fwidth(db);      /* the creases are drawn smooth at any size (Colleen: the skin looked too smooth; the old fade hid them at every normal size) */
   float fa = 1.0 - smoothstep(0.06, 0.12 + fwa * 1.2, min(fract(da), 1.0 - fract(da))), fb = 1.0 - smoothstep(0.06, 0.12 + fwb * 1.2, min(fract(db), 1.0 - fract(db)));
-  float furrows = (max(fa, fb * (0.6 + 0.4 * vnoise(P * 0.8))) - fa * fb * 0.6) * (1.0 - smoothstep(0.32, 0.6, max(fwa, fwb))) * (0.55 + 0.45 * vnoise(P * 0.3 + 5.0)) * wb * (1.0 - nail) * (1.0 - stK * 0.7);      /* no bright dot where two furrows cross (the pale specks, 2026-11-19) */
+  float furrows = (max(fa, fb * (0.6 + 0.4 * vnoise(P * 0.8))) - fa * fb * 0.6) * (1.0 - smoothstep(0.2, 0.42, max(fwa, fwb))) * (0.55 + 0.45 * vnoise(P * 0.3 + 5.0)) * wb * (1.0 - nail) * (1.0 - stK * 0.7);      /* no bright dot where two furrows cross (the pale specks, 2026-11-19) */
   c *= 1.0 - furrows * 0.085 - ridges * 0.045;
   /* MORE LIFE IN THE SKIN (Colleen 2026-11-19: "the skin texture still isn't great"): real skin is never one even color. Soft blotches a few millimetres
      across (a little redder or browner), and on the back of the hand and fingers the tiny dots of hair follicles, each with a faint shadow. */
   float mot1 = vnoise(P * 0.11 + 3.0) - 0.5, mot2 = vnoise(P * 0.38 + 19.0) - 0.5;
-  c *= 1.0 + (mot1 * 0.09 + mot2 * 0.05) * (1.0 - nail);
-  c = mix(c, c * vec3(1.04, 0.95, 0.93), clamp(mot2 * 1.6 + 0.2, 0.0, 1.0) * 0.22 * (1.0 - nail));
+  c *= 1.0 + (mot1 * 0.065 + mot2 * 0.03) * (1.0 - nail);
+  c = mix(c, c * vec3(1.04, 0.95, 0.93), clamp(mot2 * 1.6 + 0.2, 0.0, 1.0) * 0.14 * (1.0 - nail));
   vec3 fcell = floor(Pw * 0.62), fsub = fract(Pw * 0.62) - 0.5; float fh = hash3(fcell);
   float foll = step(0.72, fh) * (1.0 - smoothstep(0.06, 0.13, length(fsub.xy - (vec2(hash3(fcell + 3.1), hash3(fcell + 7.7)) - 0.5) * 0.5))) * wb * (1.0 - nail) * fadeFine(P * 1.4);
   c *= 1.0 - foll * 0.22;      /* the back's furrows mostly as soft shading, little bump (bumps there made pale specks) */      /* a touch of shadow down in the furrows and pores */
@@ -1759,7 +1759,7 @@ function dressHand(g) {
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor + skinRough, 0.45, 0.9);')
           .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + SKIN_BUMP)
           .replace('#include <lights_fragment_end>', SKIN_SSS + '\n' + SKIN_OCC + '\n#include <lights_fragment_end>')
-          .replace('#include <dithering_fragment>', 'float ndv = abs(dot(normalize(normal), normalize(vViewPosition)));\n float rim = 1.0 - smoothstep(0.04, 0.6, ndv);\n gl_FragColor.rgb *= mix(vec3(1.0), skEdge, rim * skEdgeK);\n gl_FragColor.rgb += rim * rim * skRim;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.0, 1.0, 0.0), clamp(vTone.z, 0.0, 1.0) * skDbg);\n float cutA = smoothstep(skCut.x, skCut.x + skCut.y, vRest.y); if (cutA < 0.999 && !gl_FrontFacing) discard; gl_FragColor.a *= cutA;\n#include <dithering_fragment>');      /* the wrist fades away softly instead of ending in a flat cut (2026-11-19) */      /* soft warm outline, so a thumb crossing the fingers still stands out */
+          .replace('#include <dithering_fragment>', 'float ndv = abs(dot(normalize(normal), normalize(vViewPosition)));\n float rim = 1.0 - smoothstep(0.04, 0.6, ndv);\n gl_FragColor.rgb *= mix(vec3(1.0), skEdge, rim * skEdgeK);\n gl_FragColor.rgb += rim * rim * skRim;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.0, 1.0, 0.0), clamp(vTone.z, 0.0, 1.0) * skDbg);\n float cutA = smoothstep(skCut.x, skCut.x + skCut.y, vRest.y); if (!gl_FrontFacing && vRest.y < skCut.x + skCut.y * 2.2) discard; gl_FragColor.a *= cutA;\n#include <dithering_fragment>');      /* the wrist fades away softly instead of ending in a flat cut (2026-11-19) */      /* soft warm outline, so a thumb crossing the fingers still stands out */
       }; o.frustumCulled = false; o.castShadow = true; o.receiveShadow = true; } });
   Object.values(H.bones).forEach(b => { b.userData.q0 = b.quaternion.clone(); });
   setup(root);
