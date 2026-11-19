@@ -320,7 +320,7 @@ body.withside .wrap { margin-right: 240px; }
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
 // Other server files: TestingRooms.gs (testing rooms in support classes), Health.gs (health check, archive, weekly backup, Errors tab), TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.122';
+var VERSION = '0.123';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -2544,7 +2544,7 @@ function teacherHome_(w) {
     appts: (speedStep_('teacher: retake asks'), appts).map(function (a) { var s = student_(a.sid), r = readiness_(a), where = str_(a.loc) ? str_((troom_(a.loc) || {}).name) : '', ses = (group_('Sessions', 'appt')[str_(a.id)] || []).slice(-1)[0] || {}; return { where: where, inAt: str_(ses.inAt), start: str_(ses.start), end: str_(ses.end), outcome: str_(ses.outcome), created: str_(a.created), id: str_(a.id), date: day_(a.date), period: str_(a.period), half: str_(a.half), campus: str_(a.campus), student: studentName_(s), course: str_(a.course), test: str_(a.test), purpose: str_(a.purpose), status: str_(a.status), notes: json_(a.snotes, []), nsChoice: str_(a.nsChoice), mailbox: str_(a.mailbox), mailboxBy: str_(a.mailboxBy), timing: str_(a.timing), history: apptHistory_(a), returned: !!json_(a.returned, null), ready: r, missedClass: json_(a.conflict, null) ? json_(a.conflict, {}).course : '' }; }),
     tests: (speedStep_('teacher: appointments'), rows_('Assessments')).filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && str_(r.year) === schoolYear_(); }).map(assessOut_),
     resources: (speedStep_('teacher: tests on file'), rows_('Resources')).filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && !/^(no|false)$/i.test(str_(r.active)); }).map(function (r) { return { id: str_(r.id), type: str_(r.type), title: str_(r.title), link: str_(r.link), courses: list_(r.courses), expires: day_(r.expires) }; }),
-    mySections: (speedStep_('teacher: resources'), currentSections_(w)), tdDrafts: tdDrafts_(w),          // 0.68: for inviting several students (0.70: this semester only, one line per section)
+    mySections: (speedStep_('teacher: resources'), currentSections_(w)), tdDrafts: tdDrafts_(w), tdRecent: tdRecent_(w),          // 0.68: for inviting several students (0.70: this semester only, one line per section)
     dropBoxes: (speedStep_('teacher: classes'), { S: dropBoxes_('S'), N: dropBoxes_('N') }),          // 0.88
     rules: rulesFor_(w.tid), returnPref: str_((find_('Teachers', 'tid', w.tid) || {}).returnPref) || 'paper',
     defaults: rows_('Teacher Defaults').filter(function (r) { return myTids_(w).indexOf(str_(r.tid)) >= 0 && str_(r.course) !== '*'; }).map(function (r) { return { course: str_(r.course), format: str_(r.format), platform: str_(r.platform), form: json_(r.form, {}) }; }),
@@ -5539,15 +5539,15 @@ function api_setBus(id, on) {          // the student (their own appointment) or
 // ---------- 0.72 (Colleen): the Test day page. On the day a teacher gives a test: the class roster with accommodations; each student
 // Finished / Didn't finish / Absent; for the ones who didn't finish or were absent, a plan (Testing Center, their support room, either,
 // in class, other), minutes left and questions done (Part 2). One save sends the requests and keeps a record (Test Days tab).
-function api_testDayPrep(secid) {
+function api_testDayPrep(secid, date) {
   var w = need_('teacher'), sec = sectionsById_()[String(secid)]; if (!sec || !secTeachers_(secid).some(function (t) { return myTids_(w).indexOf(t.tid) >= 0; })) throw new Error('That isn’t one of your classes.');
   autoRooms_();
   var roster = api_classRoster(secid), campus = str_(sec.campus).charAt(0).toUpperCase() === 'N' ? 'N' : 'S';
   var rsids = roster.map(function (x) { return str_(x.sid); }); studentsLoad_(rsids); if (rsids.length) slices_('Enrollments', 'sid', rsids);          // 0.96: the whole class in one cache call each
   var tests = rows_('Assessments').filter(function (A) { return str_(A.year) === schoolYear_() && myTids_(w).indexOf(str_(A.tid)) >= 0 && low_(A.course) === low_(sec.course); }).map(function (A) { var f = testFile_(A); return { id: str_(A.id), name: str_(A.name), pdf: !!(f && f.id), qs: f && f.id && f.qmap ? qLabels_(f.qmap) : [] }; });
-  var dr = tdRow_(w, secid);          // 0.72: today's unfinished tracking for this class comes back
-  var info = dayInfo_(campus, today_()), bell = info.school ? (bells_(campus, info.sched)[str_(sec.period)] || {}) : {};          // 0.82: for late arrivals
-  return { bell: { start: str_(bell.start), end: str_(bell.end) }, draft: dr && !/^saved/i.test(str_(dr.status)) ? { aid: str_(dr.aid), test: str_(dr.test), students: json_(dr.results, []) } : null, saved: !!(dr && /^saved/i.test(str_(dr.status))), secid: str_(secid), course: str_(sec.course), period: str_(sec.period), tests: tests, today: today_(),
+  var dt = tdDate_(date), dr = tdRow_(w, secid, dt);          // 0.72: today's unfinished tracking for this class comes back
+  var info = dayInfo_(campus, dt), bell = info.school ? (bells_(campus, info.sched)[str_(sec.period)] || {}) : {};          // 0.82: for late arrivals
+  return { bell: { start: str_(bell.start), end: str_(bell.end) }, draft: dr ? { aid: str_(dr.aid), test: str_(dr.test), students: json_(dr.results, []) } : null, saved: !!(dr && /^saved/i.test(str_(dr.status))), date: dt, secid: str_(secid), course: str_(sec.course), period: str_(sec.period), tests: tests, today: today_(),
     students: roster.map(function (x) { var st = student_(x.sid), ac = accomFor_(x.sid, sec.course);
       var rooms = myRoomSlots_(x.sid, campus).map(function (r) { return { id: r.room, name: r.label }; }).concat(placesFor_(x.sid, campus).map(function (p) { return { id: p.id, name: p.name, place: true }; }));
       return { sid: x.sid, name: x.name, plan: st ? str_(st.plan) : '', accom: accomText_(ac), rooms: rooms, k: st ? (low_(st.last) + ' ' + low_(st.alias || st.first)) : low_(x.name) }; })
@@ -5565,7 +5565,7 @@ function tdStudentMail_(w, sec, sid, st, test, when, reqId) {
     var subj = st === 'absent' ? 'Book a time to make up ' + test : 'Book a time to finish ' + test;
     var body = 'Hi ' + first + ',\n\n' + (st === 'absent' ? 'You were absent for ' + what + ' on ' + when + '. Please book a time in the ' + c.name + ' Testing Center to make it up.\n\nBook it for the next day you’ll be back at school. If you’re still out sick, wait to book until you know which day you’ll be back.' : 'You didn’t get to finish ' + what + ' in class on ' + when + '. Please book a time in the ' + c.name + ' Testing Center to finish it.') +
       '\n\nBook here:\n' + appUrl_() + '\n\nIf you’d like a different plan, talk with ' + tn + (w.email ? ' (' + w.email + ')' : '') + '.\n\nBring your student ID.\n\n' + c.name + ' Testing Center';
-    mail_('s-testday', 's-testday:' + clean_(reqId, 30) + ':' + sid, low_(stu.email), subj, body, '', true, str_(stu.campus));
+    mail_('s-testday', 's-testday:' + reqId + ':' + sid + ':' + st, low_(stu.email), subj, body, '', true, str_(stu.campus));
   } catch (e) { logError_('Test day student email', e.message); }
 }
 // 0.121 (Colleen): "Come back to my room later today" (lunch, study hall): no request, just an email so the student remembers to come back
@@ -5574,42 +5574,65 @@ function tdLaterMail_(w, sec, sid, test, minutes, when, reqId) {
     var stu = student_(sid); if (!stu || !stu.email) return;
     var tn = str_(w.name) || 'your teacher', room = str_(sec.room), what = test + ' (' + str_(sec.course) + ')';
     var body = 'Hi ' + str_(stu.alias || stu.first) + ',\n\nYou didn’t get to finish ' + what + ' in class today. Remember to come back to ' + tn + '’s room' + (room ? ' (' + room + ')' : '') + (when ? ' ' + (/^(at|during|in|on|after|before)\b/i.test(when) ? '' : 'at ') + when : ' later today') + ' to finish it' + (minutes ? ' (about ' + parseInt(minutes, 10) + ' minutes left)' : '') + '.\n\nBring your student ID. If you can’t make it, tell ' + tn + (w.email ? ' (' + w.email + ')' : '') + ' before then.\n\n' + tn;
-    mail_('s-later', 's-later:' + clean_(reqId, 30) + ':' + sid, low_(stu.email), 'Come back today to finish ' + test, body, '', true, str_(stu.campus));
+    mail_('s-later', 's-later:' + reqId + ':' + sid, low_(stu.email), 'Come back today to finish ' + test, body, '', true, str_(stu.campus));
   } catch (e) { logError_('Test day come-back email', e.message); }
 }
 function api_testDaySave(d) {
   var w = need_('teacher'); d = d || {};
   var sec = sectionsById_()[String(d.secid)]; if (!sec || !secTeachers_(d.secid).some(function (t) { return myTids_(w).indexOf(t.tid) >= 0; })) throw new Error('That isn’t one of your classes.');
   var A = str_(d.aid) ? find_('Assessments', 'id', d.aid) : null, test = A ? str_(A.name) : clean_(d.test, 120); if (!test) throw new Error('Pick or type the name of the test.');
-  var cmp = str_(sec.campus).charAt(0).toUpperCase() === 'N' ? 'N' : 'S', dinf = dayInfo_(cmp, today_()), bstart = dinf.school ? str_((bells_(cmp, dinf.sched)[str_(sec.period)] || {}).start) : '';
-  var when = niceDate_(today_()).split(',')[0] + ' ' + today_().slice(5).replace('-', '/'), sent = 0, skipped = [], counts = { finished: 0, unfinished: 0, absent: 0 };
+  var cmp = str_(sec.campus).charAt(0).toUpperCase() === 'N' ? 'N' : 'S', dt = tdDate_(d.date), dinf = dayInfo_(cmp, dt), bstart = dinf.school ? str_((bells_(cmp, dinf.sched)[str_(sec.period)] || {}).start) : '';
+  var when = niceDate_(dt).split(',')[0] + ' ' + dt.slice(5).replace('-', '/'), sent = 0, skipped = [], counts = { finished: 0, unfinished: 0, absent: 0 }, kb = str_(d.secid) + ':' + dt, changed = 0, canceled = 0;
+  d.date = dt;
+  // 0.123: saving again (a changed test day) updates or cancels the requests it made instead of making new ones; emails go once per student and status
+  var tdReq = function (sid) { return reqRows_().filter(function (r) { return str_(r.sid) === String(sid) && str_(r.secid) === str_(d.secid) && low_(r.test) === low_(test) && REQ_OPEN.test(str_(r.status)) && /^(absent for the test|didn.t finish in class)/i.test(str_(r.note)); })[0] || null; };
+  var drop = function (x, why) { var r = tdReq(x.sid); if (!r) return;
+    if (/^booked/i.test(str_(r.status))) { var s = student_(x.sid); skipped.push({ name: s ? studentName_(s) : x.sid, why: 'already booked a Testing Center time; cancel that appointment if it’s no longer needed' }); return; }
+    locked_(function () { update_('Test Requests', req_(r.id), { status: 'Canceled by ' + (w.name || w.email) + ' (' + why + ')', changed: iso_() }); audit_('Test request canceled', r.id, 'test day changed'); }); canceled++; };
   (d.students || []).slice(0, 80).forEach(function (x) {
     var st = /^(finished|unfinished|absent)$/.test(x.status) ? x.status : ''; if (!st) return; counts[st]++;
     var lt = lateIn_(x.late), lm = lt ? lateMin_(lt, bstart) : 0, lateTxt = lt ? ' Arrived late at ' + niceTime_(lt) + (lm ? ' (' + lm + ' minute' + (lm === 1 ? '' : 's') + ' late)' : '') + '.' : '';
-    if (st === 'finished') return;
+    if (!st || st === 'finished') { drop(x, st ? 'finished' : 'unmarked'); return; }
     var plan = str_(x.plan) || 'tc', note = (st === 'absent' ? 'Absent for the test on ' + when + '.' : 'Didn’t finish in class on ' + when + (x.minutes ? '; ' + parseInt(x.minutes, 10) + ' minutes left' : '') + '.' + lateTxt) + (clean_(x.note, 300) ? ' ' + clean_(x.note, 300) : '');
-    if (plan === 'later') { tdLaterMail_(w, sec, x.sid, test, x.minutes, clean_(x.note, 300), d.reqId); return; }          // 0.121: back to the teacher's room later today
-    if (plan === 'class' || plan === 'other') return;          // finishing in class (or another plan): only the record keeps it
+    if (plan === 'later') { drop(x, 'coming back later today'); tdLaterMail_(w, sec, x.sid, test, x.minutes, clean_(x.note, 300), kb); return; }          // 0.121: back to the teacher's room later today
+    if (plan === 'class' || plan === 'other') { drop(x, plan === 'class' ? 'finishing in class' : 'another plan'); return; }          // finishing in class (or another plan): only the record keeps it
     var where = plan === 'tc' ? '' : plan;          // a support room id, or "either:<id>"
+    var had = tdReq(x.sid);
+    if (had) {          // already sent on an earlier save: bring it up to date, no new email
+      locked_(function () { var r = req_(had.id), tc = /^either:/.test(where); update_('Test Requests', r, { note: note, where: tc ? where.slice(7) : where, tcToo: tc ? 'Yes' : '', timing: st === 'unfinished' ? timingIn_(x.minutes) : '', changed: iso_() }); });
+      changed++; return;
+    }
     try { api_reqSave({ sid: x.sid, secid: d.secid, aid: A ? str_(A.id) : '', test: A ? '' : test, where: where, note: note, timing: st === 'unfinished' ? x.minutes : '', part2: st === 'unfinished' ? qList_(x.done) : [], reqId: 'td:' + clean_(d.reqId, 30) + ':' + x.sid }); sent++;
-      if (plan === 'tc' || /^either:/.test(plan)) tdStudentMail_(w, sec, x.sid, st, test, when, d.reqId); }
+      if (plan === 'tc' || /^either:/.test(plan)) tdStudentMail_(w, sec, x.sid, st, test, when, kb); }
     catch (e) { var s = student_(x.sid); skipped.push({ name: s ? studentName_(s) : x.sid, why: String(e.message || e) }); }
   });
   locked_(function () { tdWrite_(w, sec, d, A ? str_(A.id) : '', test, 'Saved'); audit_('Test day saved', str_(d.secid), counts); });
-  return { sent: sent, skipped: skipped, counts: counts };
+  return { sent: sent, skipped: skipped, counts: counts, changed: changed, canceled: canceled };
 }
 
-function tdRow_(w, secid) { return rows_('Test Days').filter(function (r) { return str_(r.tid) === str_(w.tid) && str_(r.secid) === String(secid) && day_(r.date) === today_(); }).pop() || null; }
+// 0.123 (Colleen): a saved test day can be opened again and changed (today or up to 30 days back)
+function tdDate_(d) { var t = today_(), v = /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? String(d) : t; return v > t || v < addDays_(t, -30) ? t : v; }
+function tdRow_(w, secid, date) { var dt = tdDate_(date); return rows_('Test Days').filter(function (r) { return str_(r.tid) === str_(w.tid) && str_(r.secid) === String(secid) && day_(r.date) === dt; }).pop() || null; }
 function tdWrite_(w, sec, d, aid, test, status) {          // inside locked_(): today's row for this teacher and class (one per day)
-  var v = { date: today_(), tid: w.tid, secid: str_(sec.secid), course: str_(sec.course), aid: aid, test: test, results: JSON.stringify((d.students || []).slice(0, 80).map(function (x) { return { sid: str_(x.sid), status: x.status || '', plan: x.plan || '', minutes: x.minutes || '', done: clean_(x.done, 80), note: clean_(x.note, 300), late: lateIn_(x.late) }; })), at: iso_(), by: w.email, status: status };
-  var r = tdRow_(w, sec.secid); if (r && !/^saved/i.test(str_(r.status))) update_('Test Days', r, v); else { v.id = uid_('td'); insert_('Test Days', v); }
+  var v = { date: tdDate_(d.date), tid: w.tid, secid: str_(sec.secid), course: str_(sec.course), aid: aid, test: test, results: JSON.stringify((d.students || []).slice(0, 80).map(function (x) { return { sid: str_(x.sid), status: x.status || '', plan: x.plan || '', minutes: x.minutes || '', done: clean_(x.done, 80), note: clean_(x.note, 300), late: lateIn_(x.late) }; })), at: iso_(), by: w.email, status: status };
+  var dt0 = tdDate_(d.date), same = rows_('Test Days').filter(function (x) { return str_(x.tid) === str_(w.tid) && str_(x.secid) === str_(sec.secid) && day_(x.date) === dt0; });
+  var r = (test ? same.filter(function (x) { return low_(x.test) === low_(test); }).pop() : null) || same.pop() || null; if (r && /^saved/i.test(str_(r.status)) && status === 'Draft') v.status = 'Saved · changing';          // one row per class per day; a saved one is changed in place
+  if (r && /^saved/i.test(str_(r.status)) && status === 'Saved' && test && low_(r.test) !== low_(test)) r = null;          // a second, different test the same day gets its own row
+  if (r) update_('Test Days', r, v); else { v.id = uid_('td'); insert_('Test Days', v); }
 }
 function api_testDayDraft(d) {          // saved as the teacher taps, so leaving the page loses nothing
   var w = need_('teacher'); d = d || {}; var sec = sectionsById_()[String(d.secid)]; if (!sec || !secTeachers_(d.secid).some(function (t) { return myTids_(w).indexOf(t.tid) >= 0; })) throw new Error('That isn’t one of your classes.');
   locked_(function () { tdWrite_(w, sec, d, clean_(d.aid, 40), clean_(d.test, 120), 'Draft'); });
   return 'ok';
 }
-function tdDrafts_(w) { return rows_('Test Days').filter(function (r) { return str_(r.tid) === str_(w.tid) && day_(r.date) === today_() && !/^saved/i.test(str_(r.status)); }).map(function (r) { var sec = sectionsById_()[str_(r.secid)] || {}; return { secid: str_(r.secid), course: str_(r.course), period: str_(sec.period), test: str_(r.test) }; }); }
+function tdRecent_(w) {          // 0.123: saved test days from the last 14 days, to open and change
+  var from = addDays_(today_(), -14);
+  return rows_('Test Days').filter(function (r) { return str_(r.tid) === str_(w.tid) && day_(r.date) >= from && /^saved/i.test(str_(r.status)); })
+    .map(function (r) { var sec = sectionsById_()[str_(r.secid)] || {}, res = json_(r.results, []), n = function (k) { return res.filter(function (x) { return x.status === k; }).length; };
+      return { date: day_(r.date), secid: str_(r.secid), course: str_(r.course), period: str_(sec.period), test: str_(r.test), absent: n('absent'), unfinished: n('unfinished') }; })
+    .sort(function (a, b) { return b.date.localeCompare(a.date) || String(a.period).localeCompare(String(b.period), undefined, { numeric: true }); });
+}
+function tdDrafts_(w) { return rows_('Test Days').filter(function (r) { return str_(r.tid) === str_(w.tid) && day_(r.date) === today_() && (!/^saved/i.test(str_(r.status)) || /changing/i.test(str_(r.status))); }).map(function (r) { var sec = sectionsById_()[str_(r.secid)] || {}; return { secid: str_(r.secid), course: str_(r.course), period: str_(sec.period), test: str_(r.test) }; }); }
 
 // ---------- 0.75 (Colleen 2026-11-01): grading by question, option A first. Step 1: each student's own copy of a mapped test, with their
 // name and a code on every page (so a scanned stack can be in any order). A "grading set" = one test, one class, its students.
@@ -7151,7 +7174,7 @@ function drawTch() {
   var h = TH, up = h.appts.filter(function (a) { return a.date >= B.today; }), past = h.appts.filter(function (a) { return a.date < B.today; });
   var need = up.filter(function (a) { return a.ready.state === 'Needs info'; }).length;
   var out = '<div class="wrap"><h1>My classes · Testing Center</h1><p class="mute" style="margin-top:0">Your students’ makeup tests and retakes. Fill in the testing form once per test; it’s used for every student taking it.</p>';
-  out += '<div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-color:var(--brand)"><div class="grow"><h2 style="margin:0">📋 Giving a test today?</h2><div class="small mute">Mark who finished, who didn’t and who was absent. The app sends the Testing Center requests, with extra time and the plan for each student.</div></div>' + tdConts(h.tdDrafts || []).map(function (x) { return '<button class="btn big" onclick="tdayStart(\'' + esc(x.open) + '\')">▶ Continue ' + (x.period ? 'P' + esc(x.period) + ' ' : '') + esc(x.course) + '</button>'; }).join(' ') + ' <button class="btn pri big" onclick="tdayStart()">Open Test day</button></div>';          // 0.72
+  out += '<div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-color:var(--brand)"><div class="grow"><h2 style="margin:0">📋 Giving a test today?</h2><div class="small mute">Mark who finished, who didn’t and who was absent. The app sends the Testing Center requests, with extra time and the plan for each student.</div></div>' + tdConts(h.tdDrafts || []).map(function (x) { return '<button class="btn big" onclick="tdayStart(\'' + esc(x.open) + '\')">▶ Continue ' + (x.period ? 'P' + esc(x.period) + ' ' : '') + esc(x.course) + '</button>'; }).join(' ') + ' <button class="btn pri big" onclick="tdayStart()">Open Test day</button>' + tdRecentHtml(h.tdRecent || []) + '</div>';          // 0.72
   if (need) out += '<div class="banner warn"><b>' + need + ' appointment' + (need > 1 ? 's need' : ' needs') + ' testing information.</b> Open one and fill in what’s missing.</div>';
   if (h.retakeAsks && h.retakeAsks.length) out += '<div class="card" style="border-color:var(--warn)"><h2>🔁 Students asking for one more retake</h2><p class="small mute" style="margin-top:0">Students may retake up to half of a class’s summative tests in a semester. These students are over that. If you allow it, they can book it, and the Testing Center sees you allowed it.</p>' + h.retakeAsks.map(roRow).join('') + '</div>';
   if (h.unlisted && h.unlisted.length) out += '<div class="card" style="border-color:var(--warn)"><h2>❓ What’s the last day for these tests?</h2><p class="small mute" style="margin-top:0">Your students booked tests that aren’t in the app yet. Answer once per test: it counts for every student, and after the last day students can’t book it (you and the Testing Center still can).</p>' + h.unlisted.map(ulRow).join('') + '</div>';
@@ -7292,8 +7315,17 @@ function rqMany() {
   };
 }
 // ---------- 0.72: Test day. Pick the class and the test; mark each student; one save sends the requests and keeps a record
-var TD = null, TDS = [];          // 0.81: TDS = one group per class on the page (a whole period can hold two levels); TD = the group being changed
+var TD = null, TDS = [], TDDATE = '';          // 0.81: TDS = one group per class on the page (a whole period can hold two levels); TD = the group being changed
 // 0.122 (Colleen): a whole period opened together (Prep + Accel) comes back together, the way she left it
+function tdRecentHtml(list) {          // 0.123: saved test days (last 14 days) to open and change
+  if (!list.length) return '';
+  var g = {}, keys = [];
+  list.forEach(function (x) { var k = x.date + '|' + (x.period || 's:' + x.secid); if (!g[k]) { g[k] = []; keys.push(k); } g[k].push(x); });
+  return '<details style="flex-basis:100%"><summary class="small">Change a test day you already saved (' + keys.length + ')</summary><div style="margin-top:6px">' + keys.map(function (k) { var a = g[k], x = a[0], open = a.length > 1 && x.period ? 'p:' + x.period : x.secid;
+    var ab = a.reduce(function (n, y) { return n + y.absent; }, 0), un = a.reduce(function (n, y) { return n + y.unfinished; }, 0);
+    return '<div class="slot" style="padding:6px 10px"><div class="grow small"><b>' + esc(niceD(x.date)) + '</b> · ' + (x.period ? 'P' + esc(x.period) + ' ' : '') + esc(a.map(function (y) { return y.course; }).join(' + ')) + ' · ' + esc(x.test || '') + '<span class="mute"> · ' + ab + ' absent, ' + un + ' didn’t finish</span></div><button class="btn sm" onclick="tdayStart(\'' + esc(open) + '\',\'' + esc(x.date) + '\')">Change</button></div>';
+  }).join('') + '</div></details>';
+}
 function tdConts(list) {
   var byP = {}, out = [];
   list.forEach(function (x) { var k = x.period || ('s:' + x.secid); (byP[k] = byP[k] || []).push(x); });
@@ -7302,26 +7334,27 @@ function tdConts(list) {
     else g.forEach(function (x) { out.push({ open: x.secid, period: x.period, course: x.course }); }); });
   return out;
 }
-function tdayStart(open) {
+function tdayStart(open, date) {
+  TDDATE = date || '';
   var secs = TH.mySections || [], byP = {};
   secs.forEach(function (c) { if (c.period) (byP[c.period] = byP[c.period] || []).push(c); });
   var both = Object.keys(byP).filter(function (p) { return byP[p].length > 1; }).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); });
-  $('main').innerHTML = '<div class="wrap narrow"><p><button class="link" onclick="drawTch()">← My classes</button></p><h1>📋 Test day</h1><div class="card"><label class="f">Which class?</label><select id="tdSec"><option value="">Choose the class…</option>' +
+  $('main').innerHTML = '<div class="wrap narrow"><p><button class="link" onclick="drawTch()">← My classes</button></p><h1>📋 Test day' + (date ? ' · ' + esc(niceD(date)) : '') + '</h1><div class="card"><label class="f">Which class?</label><select id="tdSec"><option value="">Choose the class…</option>' +
     both.map(function (p) { return '<option value="p:' + esc(p) + '">P' + esc(p) + ' · the whole period (' + byP[p].map(function (c) { return esc(c.course); }).join(' + ') + ')</option>'; }).join('') +
     secs.map(function (c) { return '<option value="' + esc(c.secid) + '">' + (c.period ? 'P' + esc(c.period) + ' · ' : '') + esc(c.course) + (c.snum ? ' · section ' + esc(c.snum) : '') + '</option>'; }).join('') + '</select>' + (secs.length ? '' : '<p class="small mute">None of your classes have students this semester yet.</p>') + '</div><div id="tdBody"></div></div>';
   $('tdSec').onchange = function () {
     var v = this.value; if (!v) return; $('tdBody').innerHTML = '<div class="spin">Getting your class…</div>';
     var ids = /^p:/.test(v) ? (byP[v.slice(2)] || []).map(function (c) { return c.secid; }) : [v];
-    Promise.all(ids.map(function (id) { return call('api_testDayPrep', id); })).then(function (ps) {
+    Promise.all(ids.map(function (id) { return call('api_testDayPrep', id, TDDATE); })).then(function (ps) {
       var picked = false, saved = false;
       TDS = ps.map(function (p) {
         var g = { p: p, s: {}, aid: '', test: '' };
         if (p.draft) { g.aid = p.draft.aid; g.test = p.draft.test; (p.draft.students || []).forEach(function (x) { g.s[x.sid] = { status: x.status, plan: x.plan, minutes: x.minutes, done: x.done, note: x.note, late: x.late || '' }; }); picked = true; }
-        if (p.saved && !p.draft) saved = true;
+        if (p.saved) saved = true;
         return g;
       });
       TD = TDS[0]; tdayDraw();
-      if (picked) toast('Picked up where you left off'); else if (saved) toast('You already finished a test day for this class today. Saving again sends any new requests.');
+      TDS.saved = saved; if (saved) { tdayDraw(); toast('Your saved test day is open. Change anything, then press Save changes.'); } else if (picked) toast('Picked up where you left off');
     }).catch(fail);
   };
   if (open) { $('tdSec').value = open; $('tdSec').onchange(); }
@@ -8393,7 +8426,7 @@ function tdayKeep() {
   window.__tdK = setTimeout(function () {
     if (!TDS.length) return;
     Promise.all(TDS.map(function (g) { var list = g.p.students.map(function (x) { var r = g.s[x.sid] || {}; return { sid: x.sid, status: r.status || '', plan: r.plan || '', minutes: r.minutes || '', done: r.done || '', note: r.note || '', late: r.late || '' }; });
-      return call('api_testDayDraft', { secid: g.p.secid, aid: g.aid, test: g.test, students: list }); }))
+      return call('api_testDayDraft', { secid: g.p.secid, aid: g.aid, test: g.test, students: list, date: TDDATE }); }))
       .then(function () { var e = $('tdState'); if (e) e.textContent = '✓ Saved as you go'; }).catch(function () { var e = $('tdState'); if (e) e.textContent = 'Not saved yet (check the connection)'; });
   }, 1200);
 }
@@ -8423,7 +8456,7 @@ function tdayDraw() {
       (gi === 0 ? '<p class="small mute" style="margin:10px 0">Tap each student. For anyone who didn’t finish or was absent, pick the plan; the Testing Center or support room gets a request with it. Leave minutes empty for the whole period.</p>' : '<div style="height:10px"></div>') + p.students.map(row).join('') + '</div>';
   }).join('');
   var any = TDS.some(function (g) { return Object.keys(g.s).length; });
-  $('tdBody').innerHTML = html + '<div class="card" style="position:sticky;bottom:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="grow small"><span id="tdState" class="tiny mute" style="display:block">' + (any ? '✓ Saved as you go' : 'Saved as you go: you can leave and come back') + '</span>✓ ' + n.finished + ' finished · ⏳ ' + n.unfinished + ' didn’t finish · ✕ ' + n.absent + ' absent · ' + (all - n.finished - n.unfinished - n.absent) + ' not marked</span><button class="btn pri big" id="tdGo" onclick="tdaySave(this)">Finish test day</button></div>';
+  $('tdBody').innerHTML = html + '<div class="card" style="position:sticky;bottom:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="grow small"><span id="tdState" class="tiny mute" style="display:block">' + (any ? '✓ Saved as you go' : 'Saved as you go: you can leave and come back') + '</span>✓ ' + n.finished + ' finished · ⏳ ' + n.unfinished + ' didn’t finish · ✕ ' + n.absent + ' absent · ' + (all - n.finished - n.unfinished - n.absent) + ' not marked</span><button class="btn pri big" id="tdGo" onclick="tdaySave(this)">' + (TDS.saved ? 'Save changes' : 'Finish test day') + '</button></div>';
 }
 function tdayLate(sid) {          // 0.82: tap ⏰ Late: the arrival time starts at now (change it if needed); tap again to take it off
   var G = tdG(sid), r = G.s[sid] = G.s[sid] || {}, d = new Date();
@@ -8442,18 +8475,19 @@ function tdayLateText(t, bell, short) {          // "7 minutes late · missed 7 
 function tdaySet(sid, k, v, quiet) { var G = tdG(sid), r = G.s[sid] = G.s[sid] || {}; if (k === 'status' && r.status === v) delete r.status; else r[k] = v; tdayKeep(); if (!quiet) tdayDraw(); }
 function tdayAll(gi) { var G = TDS[gi || 0]; G.p.students.forEach(function (x) { var r = G.s[x.sid] = G.s[x.sid] || {}; if (!r.status) r.status = 'finished'; }); tdayKeep(); tdayDraw(); }
 function tdaySave(btn) {
+  clearTimeout(window.__tdK);          // 0.123: a pending save-as-you-go must not land after the real save
   tdaySame();
   var jobs = TDS.map(function (G) { return { G: G, list: G.p.students.map(function (x) { var r = G.s[x.sid] || {}; return { sid: x.sid, status: r.status || '', plan: r.plan || 'tc', minutes: r.minutes || '', done: r.done || '', note: r.note || '', late: r.late || '' }; }) }; })
-    .filter(function (j) { return j.list.some(function (x) { return x.status; }); });
-  if (!jobs.length) return toast('Mark the students first.');
+    ;
+  if (!jobs.some(function (j) { return j.list.some(function (x) { return x.status; }); })) return toast('Mark the students first.');          // 0.123: every class on the page is saved, so a whole period comes back whole
   var noTest = jobs.filter(function (j) { return !j.G.aid && !String(j.G.test || '').trim(); })[0]; if (noTest) return toast('Pick or type the name of the test' + (TDS.length > 1 ? ' for ' + noTest.G.p.course : '') + ' first.');
   var out = 0; jobs.forEach(function (j) { out += j.list.filter(function (x) { return x.status === 'unfinished' || x.status === 'absent'; }).length; });
-  if (!confirm('Save the test day? ' + (out ? out + ' student' + (out === 1 ? ' who didn’t finish or was absent gets' : 's who didn’t finish or were absent get') + ' their plan (Testing Center and support-room requests go out now).' : 'Everyone finished, so no requests go out.'))) return;
+  if (!confirm(TDS.saved ? 'Save the changes? Anyone newly marked absent or not finished gets their plan (and email). Anyone you changed to finished, or to another plan, has their Testing Center request canceled. Nobody gets the same email twice.' : 'Save the test day? ' + (out ? out + ' student' + (out === 1 ? ' who didn’t finish or was absent gets' : 's who didn’t finish or were absent get') + ' their plan (Testing Center and support-room requests go out now).' : 'Everyone finished, so no requests go out.'))) return;
   busy(btn, true);
-  var tot = { finished: 0, unfinished: 0, absent: 0, sent: 0, skipped: [] }, chain = Promise.resolve();
-  jobs.forEach(function (j) { chain = chain.then(function () { return call('api_testDaySave', { secid: j.G.p.secid, aid: j.G.aid, test: j.G.test, students: j.list, reqId: uid() }); }).then(function (r) { ['finished', 'unfinished', 'absent'].forEach(function (k) { tot[k] += r.counts[k]; }); tot.sent += r.sent; tot.skipped = tot.skipped.concat(r.skipped); }); });
+  var tot = { finished: 0, unfinished: 0, absent: 0, sent: 0, changed: 0, canceled: 0, skipped: [] }, chain = Promise.resolve();
+  jobs.forEach(function (j) { chain = chain.then(function () { return call('api_testDaySave', { secid: j.G.p.secid, aid: j.G.aid, test: j.G.test, students: j.list, reqId: uid(), date: TDDATE }); }).then(function (r) { ['finished', 'unfinished', 'absent'].forEach(function (k) { tot[k] += r.counts[k]; }); tot.sent += r.sent; tot.changed += r.changed || 0; tot.canceled += r.canceled || 0; tot.skipped = tot.skipped.concat(r.skipped); }); });
   chain.then(function () {
-    modal('<h2>✅ Test day saved</h2><p>' + tot.finished + ' finished · ' + tot.unfinished + ' didn’t finish · ' + tot.absent + ' absent.</p><p>' + tot.sent + ' request' + (tot.sent === 1 ? '' : 's') + ' sent' + (tot.sent ? ': each student is invited to book (Testing Center) or the support room sees it.' : '.') + '</p>' + (tot.skipped.length ? '<p class="small"><b>Not sent:</b></p><ul class="small">' + tot.skipped.map(function (x) { return '<li>' + esc(x.name) + ': ' + esc(x.why) + '</li>'; }).join('') + '</ul>' : '') + '<button class="btn pri" onclick="closeModal();call(\'api_teacherHome\').then(function(h){TH=h;drawTch();})">Done</button>');
+    modal('<h2>✅ Test day saved</h2><p>' + tot.finished + ' finished · ' + tot.unfinished + ' didn’t finish · ' + tot.absent + ' absent.</p><p>' + tot.sent + ' request' + (tot.sent === 1 ? '' : 's') + ' sent' + (tot.sent ? ': each student is invited to book (Testing Center) or the support room sees it.' : '.') + (tot.changed || tot.canceled ? ' ' + (tot.changed ? tot.changed + ' updated' : '') + (tot.changed && tot.canceled ? ', ' : '') + (tot.canceled ? tot.canceled + ' canceled' : '') + '.' : '') + '</p>' + (tot.skipped.length ? '<p class="small"><b>Check these:</b></p><ul class="small">' + tot.skipped.map(function (x) { return '<li>' + esc(x.name) + ': ' + esc(x.why) + '</li>'; }).join('') + '</ul>' : '') + '<button class="btn pri" onclick="closeModal();call(\'api_teacherHome\').then(function(h){TH=h;drawTch();})">Done</button>');
   }).catch(function (e) { busy(btn, false); fail(e); });
 }
 function rqNew() {
