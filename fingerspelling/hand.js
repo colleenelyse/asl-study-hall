@@ -1560,7 +1560,7 @@ key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.
 Object.assign(key.shadow.camera, { left: -0.15, right: 0.15, top: 0.2, bottom: -0.1, near: 0.1, far: 3 }); key.shadow.camera.updateProjectionMatrix();
 /* ---- the painted skin (GLSL). Units: vRest is millimetres in the resting hand ---- */
 const SKIN = 0xc68c6c;
-const SKU = { skDbg: { value: 0 }, pCol: { value: null }, pMicro: { value: null }, pMicroMM: { value: 30 }, pNail: { value: null }, pPolish: { value: new THREE.Vector4(0.8, 0.1, 0.2, 0) }, pDet: { value: null }, pBox: { value: new THREE.Vector3(0, 0, 1) }, pBump: { value: 0.00038 }, skPalm: { value: new THREE.Vector3(1, 1, 1) }, skRed: { value: 0.5 }, skSSS: { value: new THREE.Vector3() }, skEdge: { value: new THREE.Vector3() }, skEdgeK: { value: 1 }, skRim: { value: new THREE.Vector3() }, skO: { value: new THREE.Vector3() }, skAx: { value: new THREE.Vector3(1, 0, 0) }, skW: { value: new THREE.Vector2(80, 90) } };      /* palm coordinates, filled in by skin() */
+const SKU = { skOcc: { value: 0 }, skDbg: { value: 0 }, pCol: { value: null }, pMicro: { value: null }, pMicroMM: { value: 30 }, pNail: { value: null }, pPolish: { value: new THREE.Vector4(0.8, 0.1, 0.2, 0) }, pDet: { value: null }, pBox: { value: new THREE.Vector3(0, 0, 1) }, pBump: { value: 0.00038 }, skPalm: { value: new THREE.Vector3(1, 1, 1) }, skRed: { value: 0.5 }, skSSS: { value: new THREE.Vector3() }, skEdge: { value: new THREE.Vector3() }, skEdgeK: { value: 1 }, skRim: { value: new THREE.Vector3() }, skO: { value: new THREE.Vector3() }, skAx: { value: new THREE.Vector3(1, 0, 0) }, skW: { value: new THREE.Vector2(80, 90) } };      /* palm coordinates, filled in by skin() */
 const SKIN_HEAD = `#define SK_OCT ${LIGHT ? 2 : 4}
 varying vec3 vRest; varying vec4 vSk; varying vec4 vTone; uniform vec3 skO; uniform vec3 skAx; uniform vec2 skW; uniform vec3 skPalm; uniform float skRed; uniform vec3 skSSS; uniform vec3 skEdge; uniform float skEdgeK; uniform vec3 skRim; uniform float skDbg; uniform float pBump; uniform sampler2D pCol; uniform sampler2D pMicro; uniform float pMicroMM; varying vec3 vRN; uniform sampler2D pNail; uniform vec4 pPolish; uniform sampler2D pDet; uniform vec3 pBox;
 float skinH = 0.0; float skinRough = 0.0;
@@ -1739,12 +1739,12 @@ function dressHand(g) {
       o.material.onBeforeCompile = sh => {
         Object.assign(sh.uniforms, SKU);
         sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin.replace('getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] )', 'mix(getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ), 1.0, clamp(vTone.z, 0.0, 1.0))'));
-        sh.vertexShader = sh.vertexShader.replace('void main() {', 'attribute vec3 rest; attribute vec4 sk; attribute vec4 tone; varying vec3 vRest; varying vec4 vSk; varying vec4 vTone; attribute vec3 rn; varying vec3 vRN;\nvoid main() {\n vRest = rest; vSk = sk; vTone = tone; vRN = rn;');
-        sh.fragmentShader = sh.fragmentShader.replace('void main() {', SKIN_HEAD + '\n' + NAIL_SHAPE + '\nvoid main() {')
+        sh.vertexShader = sh.vertexShader.replace('void main() {', 'attribute vec3 rest; attribute vec4 sk; attribute vec4 tone; varying vec3 vRest; varying vec4 vSk; varying vec4 vTone; attribute vec3 rn; varying vec3 vRN; attribute float occ; varying float vOcc;\nvoid main() {\n vRest = rest; vSk = sk; vTone = tone; vRN = rn; vOcc = occ;');
+        sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'varying float vOcc; uniform float skOcc;\n' + SKIN_HEAD + '\n' + NAIL_SHAPE + '\nvoid main() {')
           .replace('#include <color_fragment>', '#include <color_fragment>\n' + SKIN_COLOR)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor + skinRough, 0.45, 0.9);')
           .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + SKIN_BUMP)
-          .replace('#include <lights_fragment_end>', SKIN_SSS + '\n#include <lights_fragment_end>')
+          .replace('#include <lights_fragment_end>', SKIN_SSS + '\n' + SKIN_OCC + '\n#include <lights_fragment_end>')
           .replace('#include <dithering_fragment>', 'float ndv = abs(dot(normalize(normal), normalize(vViewPosition)));\n float rim = 1.0 - smoothstep(0.04, 0.6, ndv);\n gl_FragColor.rgb *= mix(vec3(1.0), skEdge, rim * skEdgeK);\n gl_FragColor.rgb += rim * rim * skRim;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.0, 1.0, 0.0), clamp(vTone.z, 0.0, 1.0) * skDbg);\n#include <dithering_fragment>');      /* soft warm outline, so a thumb crossing the fingers still stands out */
       }; o.frustumCulled = false; o.castShadow = true; o.receiveShadow = true; } });
   Object.values(H.bones).forEach(b => { b.userData.q0 = b.quaternion.clone(); });
@@ -1757,7 +1757,7 @@ new THREE.GLTFLoader().load(HAND_URL, g => {
   H.center = c; H.size = s;
   fitRes(); window.addEventListener('resize', () => { fitRes(); });
   if (window.ResizeObserver) new ResizeObserver(() => fitRes()).observe(canvas);
-  (function loop() { if (dirty) { dirty = false; const t0 = performance.now(); placeUpper(); renderer.render(scene, cam); slowCheck(performance.now() - t0); } requestAnimationFrame(loop); })();      /* draw only when something changed (25 Chromebooks froze when every hand redrew 60 times a second, Colleen) */
+  (function loop() { try { occUpdate(performance.now()); } catch (e) {} if (dirty) { dirty = false; const t0 = performance.now(); placeUpper(); renderer.render(scene, cam); slowCheck(performance.now() - t0); } requestAnimationFrame(loop); })();      /* draw only when something changed (25 Chromebooks froze when every hand redrew 60 times a second, Colleen) */
   makeForearm(); makeForearm(true);      /* ages: the arm continues below the wrist (Colleen: no cut-off wrist with a real person) */
   tryE(); readyOk();
   if (helperOn && !helperWanted) { helperWanted = true; loadHelper(); }      /* the left hand loads the first time a page needs it (helper(true)) */
@@ -2062,7 +2062,7 @@ function skin() {
   { const pa = g.attributes.position, na = g.attributes.normal; for (let v = 0; v < n; v++) if (DSP[v]) pa.setXYZ(v, pa.getX(v) + na.getX(v) * DSP[v], pa.getY(v) + na.getY(v) * DSP[v], pa.getZ(v) + na.getZ(v) * DSP[v]);
     pa.needsUpdate = true; g.computeVertexNormals(); }      /* the padded shape, then smooth shading over it */
   paintIt(lines, W);
-  g.setAttribute('rest', new THREE.BufferAttribute(rest, 3)); g.setAttribute('rn', new THREE.BufferAttribute(rnA, 3)); g.setAttribute('sk', new THREE.BufferAttribute(sk, 4)); g.setAttribute('tone', new THREE.BufferAttribute(tone, 4));
+  g.setAttribute('rest', new THREE.BufferAttribute(rest, 3)); g.setAttribute('rn', new THREE.BufferAttribute(rnA, 3)); g.setAttribute('sk', new THREE.BufferAttribute(sk, 4)); g.setAttribute('tone', new THREE.BufferAttribute(tone, 4)); g.setAttribute('occ', new THREE.BufferAttribute(new Float32Array(n), 1));      /* contact shadows (see occUpdate) */
   makeNails();
   window.__FSHandGeo[GKEY] = { geo: g.clone(), sku: [SKU.skO.value.clone(), SKU.skAx.value.clone(), SKU.skW.value.clone()], lines, W };
 }
@@ -2120,11 +2120,42 @@ const D = Math.PI / 180, qa = (ax, deg) => new THREE.Quaternion().setFromAxisAng
 /* pose: f = index..pinky [knuckle, middle, tip, spread]; t = thumb [swing across palm, out from palm, twist, bend1, bend2]; w = [x, y, z] turn of the whole hand */
 /* the model's resting hand fans its fingers out; this closes them so 0 spread means fingers side by side (as in B and C) */
 const TOG = [-9, -2, 6, 13];
+/* Contact shadows (Colleen 2026-11-19, "go ahead with the lighting"): where skin touches or nearly touches other skin (fingers side by side, a fingertip
+   on the thumb, the thumb across the fingers) less light gets in, so it is a little darker and warmer, as real skin is. Worked out on the computer once
+   the hand holds a letter (occUpdate: each skin point counts the nearby skin of OTHER fingers in front of it), kept per shape, faded in and out with
+   skOcc, so moving stays smooth. Off on Chromebooks (LIGHT). */
+const SKIN_OCC = `{ float oc = clamp(vOcc, 0.0, 1.0) * skOcc; vec3 ok = mix(vec3(1.0), vec3(0.68, 0.55, 0.5), oc);
+  reflectedLight.indirectDiffuse *= ok; reflectedLight.directDiffuse *= mix(vec3(1.0), ok, 0.75); reflectedLight.indirectSpecular *= 1.0 - oc * 0.8; reflectedLight.directSpecular *= 1.0 - oc * 0.6; }`;
+const OCC_R = 0.011, OCC_CACHE = new Map(); let occPart = null, occKey = '', occAt = 0, occSince = 0;
+function occParts() { const m = H1.mesh, g = m.geometry, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, bones = m.skeleton.bones, out = new Int8Array(g.attributes.position.count);
+  for (let v = 0; v < out.length; v++) { let best = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent ? sw.getComponent(v, k) : [sw.getX(v), sw.getY(v), sw.getZ(v), sw.getW(v)][k]; if (w > bw) { bw = w; best = si.getComponent ? si.getComponent(v, k) : [si.getX(v), si.getY(v), si.getZ(v), si.getW(v)][k]; } }
+    const nm = bones[best] ? bones[best].name : ''; out[v] = /^thumb-(phalanx|tip)/.test(nm) ? 1 : /^index-finger-(phalanx|tip)/.test(nm) ? 2 : /^middle-finger-(phalanx|tip)/.test(nm) ? 3 : /^ring-finger-(phalanx|tip)/.test(nm) ? 4 : /^pinky-finger-(phalanx|tip)/.test(nm) ? 5 : 0; }
+  return out; }
+function occCompute() { const m = H1.mesh, g = m.geometry, pa = g.attributes.position, na = g.attributes.normal, n = pa.count; occPart = occPart || occParts();
+  const P = new Float32Array(n * 3), N = new Float32Array(n * 3), a = new THREE.Vector3(), b = new THREE.Vector3();
+  for (let v = 0; v < n; v++) { a.fromBufferAttribute(pa, v); b.fromBufferAttribute(na, v).multiplyScalar(0.003).add(a); m.boneTransform(v, a); m.boneTransform(v, b); b.sub(a).normalize();
+    P[v * 3] = a.x; P[v * 3 + 1] = a.y; P[v * 3 + 2] = a.z; N[v * 3] = b.x; N[v * 3 + 1] = b.y; N[v * 3 + 2] = b.z; }
+  const cell = OCC_R, grid = new Map(), key = (x, y, z) => x + ',' + y + ',' + z;
+  for (let v = 0; v < n; v += 3) { const k = key(Math.floor(P[v * 3] / cell), Math.floor(P[v * 3 + 1] / cell), Math.floor(P[v * 3 + 2] / cell)); let c = grid.get(k); if (!c) grid.set(k, c = []); c.push(v); }
+  const out = new Float32Array(n);
+  for (let v = 0; v < n; v++) { const px = P[v * 3], py = P[v * 3 + 1], pz = P[v * 3 + 2], cx = Math.floor(px / cell), cy = Math.floor(py / cell), cz = Math.floor(pz / cell), me = occPart[v]; let sum = 0;
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) { const c = grid.get(key(cx + dx, cy + dy, cz + dz)); if (!c) continue;
+      for (let j = 0; j < c.length; j++) { const u = c[j], pu = occPart[u]; if (pu === me) continue; const ex = P[u * 3] - px, ey = P[u * 3 + 1] - py, ez = P[u * 3 + 2] - pz, d2 = ex * ex + ey * ey + ez * ez; if (d2 > OCC_R * OCC_R || d2 < 1e-10) continue;
+        const d = Math.sqrt(d2), facing = (ex * N[v * 3] + ey * N[v * 3 + 1] + ez * N[v * 3 + 2]) / d; if (facing <= 0.05) continue; const w = 1 - d / OCC_R; sum += w * w * facing; } }
+    out[v] = Math.min(1, sum / 6.5); }
+  return out; }
+function occUpdate(now) {      /* called every frame: when the hand has held still a moment, fade the contact shadows in; when it moves, fade them out */
+  if (LIGHT || !H1.mesh || !H1.mesh.geometry.attributes.occ) return; const still = now - occSince > 150;
+  if (still && occAt === 0) { const k = Object.values(H1.bones).map(b => b.quaternion.x.toFixed(3) + b.quaternion.y.toFixed(3) + b.quaternion.z.toFixed(3)).join('');
+    if (k !== occKey) { let o = OCC_CACHE.get(k); if (!o) { o = occCompute(); if (OCC_CACHE.size > 80) OCC_CACHE.delete(OCC_CACHE.keys().next().value); OCC_CACHE.set(k, o); } const at = H1.mesh.geometry.attributes.occ; at.array.set(o); at.needsUpdate = true; occKey = k; }
+    occAt = now; }
+  const target = still && occAt ? 1 : 0, cur = SKU.skOcc.value, nx = cur + (target - cur) * (target ? 0.18 : 0.45);
+  if (Math.abs(nx - cur) > 0.002) { SKU.skOcc.value = nx; dirty = true; } else if (cur !== target) { SKU.skOcc.value = target; dirty = true; } }
 let dirty = true;      /* the picture needs drawing again */
 const TRY_T = (() => { const q = new URLSearchParams(location.search), L = q.get('tl'), t = q.get('tt'); return L && t ? { L: L.toUpperCase(), t: t.split(',').map(Number) } : null; })();      /* test page only: try a thumb for one letter */
 function tryE() { if (TRY_T && POSE[TRY_T.L]) POSE[TRY_T.L].t = TRY_T.t; if (!TRY_E || !POSE.E) return; if (TRY_E.f) POSE.E.f = [0, 1, 2, 3].map(i => TRY_E.f.length >= 12 ? TRY_E.f.slice(i * 3, i * 3 + 3).concat([0]) : TRY_E.f.concat([0]).slice(0, 4)); if (TRY_E.t) POSE.E.t = TRY_E.t; }
 function apply(p) {
-  dirty = true;
+  dirty = true; if (H === H1) { occSince = performance.now(); occAt = 0; }
   FING.forEach((f, i) => {
     const a = p.f[i], b1 = H.bones[f + '-phalanx-proximal'], b2 = H.bones[f + '-phalanx-intermediate'], b3 = H.bones[f + '-phalanx-distal'];
     b1.quaternion.copy(b1.userData.q0).multiply(qa(b1.userData.spread, -((a[3] || 0) + TOG[i]))).multiply(qa(b1.userData.bend, a[0])).multiply(qa(b1.userData.twist, a[5] || 0));      /* optional 6th value: the finger twists on its own length (the 0 in 30-90: Colleen) */
