@@ -1861,7 +1861,7 @@ function widen() {
 }
 function setup(root) {
   /* the reshaped skin is worked out once per page and shared: the next hand (the alphabet chart has dozens) just copies it */
-  const GEO = window.__FSHandGeo = window.__FSHandGeo || {}; GKEY = LIGHT ? 'l' : 'f'; CACHED = GEO[GKEY] || null;
+  const GEO = window.__FSHandGeo = window.__FSHandGeo || {}; GKEY = (LIGHT ? 'l' : 'f') + GEO_VER; CACHED = GEO[GKEY] || null;
   if (CACHED) H.mesh.geometry = CACHED.geo.clone(); else { subdivide(LIGHT ? 1 : 2); widen(); }
   root.updateMatrixWorld(true);
   /* this model's joints all hang off the armature: chain them (wrist > metacarpal > proximal > intermediate > distal > tip) so a bend carries the rest of the finger. attach() keeps every joint where it is */
@@ -1962,7 +1962,7 @@ function shapeFingers() {
   for (let it = 0; it < 8; it++) { step(0.5); step(-0.53); }
   pos.needsUpdate = true; g.computeVertexNormals();
 }
-let GKEY = 'f', CACHED = null;
+let GKEY = 'f', CACHED = null; const GEO_VER = 'g2';      /* change it whenever the skin is built differently, so a page holding an older hand never hands this one its old skin */
 function skin() {
   if (CACHED) { SKU.skO.value.copy(CACHED.sku[0]); SKU.skAx.value.copy(CACHED.sku[1]); SKU.skW.value.copy(CACHED.sku[2]); paintIt(CACHED.lines, CACHED.W); makeNails(); return; }
   shapeFingers();
@@ -2002,9 +2002,9 @@ function skin() {
         const A = L.pts[k - 1], B = L.pts[k], d = B.clone().sub(A), len = d.length(); d.normalize();
         const t = Math.max(0, Math.min(k === L.pts.length - 1 ? 3 : 1, p.clone().sub(A).dot(d) / len)), q = A.clone().add(d.clone().multiplyScalar(t * len)), dist = q.distanceTo(p);      /* painted try: past the last joint keeps counting, so the nails reach the real fingertip */
         if (dist < best) { best = dist; u = L.us[k - 1] + t * (L.us[k] - L.us[k - 1]);
-          const radial = p.clone().sub(q).normalize(), bk = (f === 'thumb' ? thumbBack.clone() : palm.clone().negate()); bk.sub(d.clone().multiplyScalar(bk.dot(d))).normalize(); if (f === 'thumb' && TROLL) bk.applyAxisAngle(d, TROLL * Math.PI / 180);      /* painted try: the thumb's nail side, turned on the thumb's length */
+          const radial = p.clone().sub(q).normalize(), bk = (f === 'thumb' ? (k === 1 ? palm.clone().negate().lerp(thumbBack, Math.min(1, t)).normalize() : thumbBack.clone()) : palm.clone().negate());      /* the thumb twists along its length: on its first bone the back turns gradually from the back of the hand to the nail side */ bk.sub(d.clone().multiplyScalar(bk.dot(d))).normalize(); if (f === 'thumb' && TROLL) bk.applyAxisAngle(d, TROLL * Math.PI / 180);      /* painted try: the thumb's nail side, turned on the thumb's length */
           const np = nw.clone().sub(d.clone().multiplyScalar(nw.dot(d)));      /* painted try: which way the skin faces round the finger, from its normal (steady even at the fingertip, where the line from the bone wobbles) */
-          if (u > -4 && name.indexOf(f) === 0) back = np.length() > 0.12 ? np.normalize().dot(bk) : radial.dot(bk); }
+          if (name.indexOf(f) === 0) { const bf = np.length() > 0.12 ? np.normalize().dot(bk) : radial.dot(bk); if (u > -4) back = bf; else if (f === 'thumb' && u > -40) { const k = Math.min(1, (u + 40) / 30); back = back + (bf - back) * k * k * (3 - 2 * k); } } }      /* the thumb's back blends into the back of the hand gradually (Colleen: a seam across the thumb, turned around) */
       }
       L.joints.forEach(([x, w]) => { if (Math.abs(u - x) < Math.abs(jd)) { jd = u - x; jw = w; } });
       if (u < -6) jw *= Math.max(0, 1 + (u + 6) / 6);
@@ -2014,6 +2014,10 @@ function skin() {
       if (u > tipU - 14) red = Math.max(red, (u - (tipU - 14)) / 14 * (back < 0 ? 0.9 : 0.35));      /* fingertips */
       if (back > 0.2) L.joints.forEach(([x]) => { red = Math.max(red, Math.max(0, 1 - Math.abs(u - x) / 5) * 0.55); });      /* knuckles */
     }
+    if (!/^(thumb|index|middle|ring|pinky)/.test(name)) {      /* the skin over the thumb's first bone belongs to the wrist in the model: give it the thumb's back/palm side too, so no seam crosses the thumb (Colleen, turned around) */
+      const TA = lines.thumb.pts[0], TB = lines.thumb.pts[1], td = TB.clone().sub(TA), tl = td.length(); td.normalize(); const tt = Math.max(0, Math.min(1, p.clone().sub(TA).dot(td) / tl)), tq = TA.clone().add(td.clone().multiplyScalar(tt * tl)), dS = tq.distanceTo(p);
+      if (dS < 0.022) { const bk = palm.clone().negate().lerp(thumbBack, tt).normalize(); bk.sub(td.clone().multiplyScalar(bk.dot(td))).normalize(); const np = nw.clone().sub(td.clone().multiplyScalar(nw.dot(td)));
+        if (np.length() > 0.12) { const bf = np.normalize().dot(bk), wq = Math.max(0, Math.min(1, (0.022 - dS) / 0.008)); back = back + (bf - back) * wq * wq * (3 - 2 * wq); } } }
     if (!finger && back < 0) { const yy = (p.y - W.y) / kY; red = Math.max(red, yy < 0.3 ? 0.22 : yy > 0.85 ? 0.18 : 0); }      /* palm heel and the pads under the fingers */
     { /* SHAPE (Colleen 2026-11-18, "do both"): real hands are padded, not tubes. Soft pads on the palm side of each finger bone (none at the joints, so the
          creases sit in the dips), a fuller fingertip pad, and the fleshy mounds of the palm. Only the skin moves, never a joint, so every letter's shape is unchanged. */
