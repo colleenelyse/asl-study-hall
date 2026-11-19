@@ -530,7 +530,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.91'
+var VERSION = '2.92'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -1076,6 +1076,8 @@ function doGet(e) {
   if (view === 'seating' && isTeacher_(myEmail_())) return seatingPage_();
   if (view === 'quick') return HtmlService.createHtmlOutput(HtmlService.createHtmlOutputFromFile('Index').getContent().replace('var QUICK_PAGE = false;', 'var QUICK_PAGE = true;'))          // 2.66: 📱 the phone page
     .setTitle('My Check-In').addMetaTag('viewport', 'width=device-width, initial-scale=1').addMetaTag('apple-mobile-web-app-title', 'My Check-In');
+  if (view === 'free') return HtmlService.createHtmlOutput(HtmlService.createHtmlOutputFromFile('Index').getContent().replace('var START_FREE = false;', 'var START_FREE = true;'))          // 2.92: ?view=free opens the free time page (the editor for a teacher)
+    .setTitle(settings_().app).addMetaTag('viewport', 'width=device-width, initial-scale=1');
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle(settings_().app)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -6218,6 +6220,8 @@ call('api_boot').then(function (b) {
   lookAfterBoot();
   if (b.teacher) { MODE = 'teacher'; VIEW = 'overview'; }
   else if (b.cm) { MODE = 'cm'; VIEW = 'cm'; }          // a case manager: their students' reports
+  if (START_FREE && MODE === 'teacher') VIEW = 'freeedit';          // 2.92: ?view=free: the teacher's preview and editor
+  else if (START_FREE && MODE === 'student' && !gate() && F('freeTime') && (B.links || []).length) VIEW = 'free';
   if (QUICK_PAGE && MODE === 'student') { document.body.classList.add('quickmode'); if (!gate()) VIEW = 'quick'; }          // 2.66: 📱 the phone page
   go(VIEW);
   try { hpButton(); } catch (e) {}          // 2.88: the hall pass comes first, on every screen (first visit, required check-in, the phone page)
@@ -9023,6 +9027,7 @@ function bellAsk() {
 setInterval(function () { try { if (MODE === 'student' && QS === null && B && !B.preview) qsLoad(); bellAsk(); } catch (e) {} }, 20000);
 
 /* ---------- 2.66: 📱 the phone page (the app's link + ?view=quick): just what a student wants during the day or at home ---------- */
+var START_FREE = false; try { if (/[?&]view=free/.test(location.search)) START_FREE = true; } catch (e) {}          // 2.92: a link straight to the free time page
 var QUICK_PAGE = false; try { if (/[?&]quick=1/.test(location.search)) QUICK_PAGE = true; } catch (e) {}
 var QK = { cls: '', type: 'Test', what: '', date: '', pts: '', cat: '', acls: '', awhat: '', adue: '' };
 function qkDay(n) { return addDays(B.today, n); }
