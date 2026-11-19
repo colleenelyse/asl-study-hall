@@ -2072,9 +2072,10 @@ function skin() {
    how far round from the back of the finger, so the edge is smooth whatever the mesh. */
 const TROLL = +((/[?&]troll=(-?\d+)/.exec(location.search) || [])[1] || 0);
 const NAILU = { nCol: { value: new THREE.Color(0.8, 0.6, 0.55) }, pPolish: SKU.pPolish, pFrench: { value: 0 } };
-const NAIL_SHAPE = `float nailR(float tf, float back, float th) { float ang = acos(clamp(back, -1.0, 1.0)) / (th > 1.5 ? 0.9 : 0.78);
-  float u = (tf - 0.345) / (th > 1.5 ? 0.26 : 0.275)      /* the free edge stops just short of the fingertip, so a sliver of fingertip shows past it (Colleen: the line where the nail meets the fingertip) */, e = u > 0.0 ? 2.6 : 4.6;      /* squoval (Colleen 2026-11-19, her photos): short, straight sides, a flat-ish tip with soft rounded corners, a round cuticle */
-  return (tf < -0.2 || th < 0.5) ? 9.0 : pow(abs(u), e) + pow(ang, u > 0.0 ? 4.0 : 5.0); }
+const NAIL_SHAPE = `float nailR(float tf, float back, float th) { float ang = acos(clamp(back, -1.0, 1.0)) / (th > 1.5 ? 1.04 : 0.78);      /* the thumb's nail is wider (Colleen: the thumbnail looked weird, a small round oval) */
+  float u = (tf - (th > 1.5 ? 0.36 : 0.345)) / (th > 1.5 ? 0.30 : 0.275)      /* the free edge stops just short of the fingertip, so a sliver of fingertip shows past it (Colleen: the line where the nail meets the fingertip) */, e = u > 0.0 ? 2.6 : 4.6;      /* squoval (Colleen 2026-11-19, her photos): short, straight sides, a flat-ish tip with soft rounded corners, a round cuticle */
+  if (th > 1.5) e = u > 0.0 ? 3.4 : 4.2;      /* the thumb's nail: squarer, with straighter sides */
+  return (tf < -0.2 || th < 0.5) ? 9.0 : pow(abs(u), e) + pow(ang, th > 1.5 ? 5.5 : (u > 0.0 ? 4.0 : 5.0)); }
 float nailMask(float tf, float back, float th) { return 1.0 - smoothstep(0.86, 1.0, nailR(tf, back, th)); }`;
 function makeNails() {
   const g = H.mesh.geometry, idx = g.index.array, tone = g.attributes.tone, sk = g.attributes.sk, keep = [];
