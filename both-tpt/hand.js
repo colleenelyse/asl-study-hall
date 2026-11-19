@@ -174,7 +174,7 @@ function make1(info, N) {
     const pore = (R() - 0.5);
     const kk = knd[i] / 255, k = 1 - pt * 0.025 + m - dp * (back ? 0.40 : 0.24) - fn * (back ? 0.2 : 0.12) - cv * 0.16 + pd * 0.06 - kk * 0.16;
     /* the back: more color variation (Colleen): warmer, redder patches and cooler, paler ones at several sizes, plus faint freckle-like spots */
-    let warm = 0, cool = 0, spot = 0; if (back) { warm = (B2[0].d[i] / 255 - 0.5) * 2; cool = (B2[1].d[i] / 255 - 0.5) * 2; spot = Math.max(0, B2[2].d[i] / 255 - 0.78) * 4; }
+    let warm = (B2[0].d[i] / 255 - 0.5) * 2, cool = (B2[1].d[i] / 255 - 0.5) * 2, spot = 0; if (back) spot = Math.max(0, B2[2].d[i] / 255 - 0.78) * 4; else { warm *= 0.8; cool *= 0.6; }      /* the palm varies too (Colleen 2026-11-19): pinker and paler patches, no freckles */
     const kb = k * (1 - spot * 0.16);
     C[i] = Math.max(0, Math.min(255, 170 * kb * (1 - v * 0.10) * (1 + warm * 0.10 - cool * 0.04)));
     C[i + 1] = Math.max(0, Math.min(255, 170 * kb * (1 - v * 0.08) * (1 - warm * 0.06 + cool * 0.02)));
@@ -1613,15 +1613,15 @@ const SKIN_COLOR = `{
   float ridges = (0.5 + 0.5 * sin(rPh)) * fadeFine(P * 2.2) * palmSide * (1.0 - nail);
   float da = dot(Pw.xy, vec2(0.82, 0.57)) / 1.3, db = dot(Pw.xy, vec2(-0.82, 0.57)) / 1.3;
   float fa = 1.0 - smoothstep(0.0, 0.2, min(fract(da), 1.0 - fract(da))), fb = 1.0 - smoothstep(0.0, 0.2, min(fract(db), 1.0 - fract(db)));
-  float furrows = max(fa, fb * (0.6 + 0.4 * vnoise(P * 0.8))) * fadeFine(P * 0.9) * wb * (1.0 - nail);
-  c *= 1.0 - furrows * 0.11 - ridges * 0.045;      /* a touch of shadow down in the furrows and pores */
+  float furrows = (max(fa, fb * (0.6 + 0.4 * vnoise(P * 0.8))) - fa * fb * 0.6) * fadeFine(P * 2.4) * wb * (1.0 - nail);      /* no bright dot where two furrows cross (the pale specks, 2026-11-19) */
+  c *= 1.0 - furrows * 0.13 - ridges * 0.045;      /* the back's furrows mostly as soft shading, little bump (bumps there made pale specks) */      /* a touch of shadow down in the furrows and pores */
   if (skDbg > 1.5) c = vec3(clamp(tf, 0.0, 1.0), nail, clamp(back, 0.0, 1.0) * 0.5);
   diffuseColor.rgb = c;
   float pores = 0.0;
 #if SK_OCT > 2
   pores = ((vnoise(P * 2.6) - 0.5) * fadeFine(P * 2.6) + (vnoise(P * 5.5) - 0.5) * 0.5 * fadeFine(P * 5.5)) * (0.9 + 0.3 * palmSide);      /* pores, finer than the picture can hold */
 #endif
-  skinH = ((dd.r - 0.5) * 2.0 + pores * 0.12 + (mA.r - 0.5) * 0.45 * mStr + (ridges - 0.25) * 1.6 - furrows * 2.0) * (1.0 - nail * 0.8);
+  skinH = ((dd.r - 0.5) * 2.0 + pores * 0.12 + (mA.r - 0.5) * 0.45 * mStr + (ridges - 0.25) * 1.6 - furrows * 0.35) * (1.0 - nail * 0.8);
   skinRough = -cutRim * 0.25 + (dd.g - 0.5) * 0.7 + (vnoise(P * 0.35 + 7.0) - 0.5) * 0.22 + (vnoise(P * 1.3) - 0.5) * 0.1;      /* uneven shine: real skin is never one smooth gloss */      /* nails are smooth and shiny; polish more so */
 }`;
 const SKIN_BUMP = `{
@@ -2259,8 +2259,16 @@ function pathAt(now) {
   return o;
 }
 let settled = false;      /* the right hand has reached its pose and was drawn there: no work until the next move */
+const smooth01 = q => q * q * (3 - 2 * q);
 function tick(now) { if (H.bones && PATH) { settled = false; cur = pathAt(now); apply(cur); } else if (H.bones && !settled) { const k = Math.min(1, (now - st) / dur); if (k >= 1) settled = true; const qf = new THREE.Quaternion().setFromEuler(new THREE.Euler(from.w[0] * D, from.w[1] * D, from.w[2] * D)), qt = new THREE.Quaternion().setFromEuler(new THREE.Euler(to.w[0] * D, to.w[1] * D, to.w[2] * D));
-    const kk = dur < 260 ? k * 0.45 + ease(k) * 0.55 : ease(k); cur = {      /* quick moves: gentler start and stop, so a fast word flows instead of jerking */ f: lerp(from.f, to.f, kk), t: lerp(from.t, to.t, kk), under: to.under, over: to.over, stage: to.stage, w: lerp(from.w, to.w, kk), p: lerp(from.p, to.p, kk), q: qf.slerp(qt, kk) };      /* the hand always turns the short way (Q used to spin around) */ if (PLAN && k < 1) cur = nudge(cur, planAt(PLAN, kk)); apply(cur); } helperTick(now); camTick(now); requestAnimationFrame(tick); }
+    /* NATURAL MOTION (Colleen 2026-11-19): the wrist leads a little, the fingers follow a few hundredths of a second apart (index first, pinky last),
+       and each finger lands with a tiny settle (a 2-3% overshoot that eases back) instead of stopping dead. Every finger still ends exactly on its letter. */
+    const base = q => dur < 260 ? q * 0.45 + ease(q) * 0.55 : ease(q), cl = q => Math.max(0, Math.min(1, q));
+    const lag = Math.min(0.12, 45 / Math.max(1, dur)), lead = Math.min(0.1, 35 / Math.max(1, dur));
+    const settle = q => { const b = base(q); return q >= 1 ? 1 : b + Math.sin(Math.PI * Math.min(1, Math.max(0, (q - 0.55) / 0.45))) * 0.025 * (dur < 160 ? 0.4 : 1) * smooth01(q); };
+    const kk = base(k), kw = base(cl(k / (1 - lead))), kf = i => settle(cl((k - lag * i / 3) / (1 - lag)));
+    cur = { f: from.f.map((a, i) => lerpA(a, to.f[i], kf(i))), t: lerp(from.t, to.t, settle(cl((k - lag * 0.4) / (1 - lag)))), under: to.under, over: to.over, stage: to.stage, w: lerp(from.w, to.w, kw), p: lerp(from.p, to.p, kw), q: qf.slerp(qt, kw) };
+    if (PLAN && k < 1) cur = nudge(cur, planAt(PLAN, kk)); apply(cur); } helperTick(now); camTick(now); requestAnimationFrame(tick); }
 requestAnimationFrame(tick);
 /* speeds (Colleen, 2026-10-13): Beginner 1 letter a second, Intermediate 2, Advanced 4, Deaf 8 (evenly spaced in between) */
 const SPEED_SLOW = 1000, SPEED_FAST = 125;
