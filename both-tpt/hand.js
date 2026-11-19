@@ -1759,7 +1759,7 @@ function dressHand(g) {
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor + skinRough, 0.45, 0.9);')
           .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + SKIN_BUMP)
           .replace('#include <lights_fragment_end>', SKIN_SSS + '\n' + SKIN_OCC + '\n#include <lights_fragment_end>')
-          .replace('#include <dithering_fragment>', 'float ndv = abs(dot(normalize(normal), normalize(vViewPosition)));\n float rim = 1.0 - smoothstep(0.04, 0.6, ndv);\n gl_FragColor.rgb *= mix(vec3(1.0), skEdge, rim * skEdgeK);\n gl_FragColor.rgb += rim * rim * skRim;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.0, 1.0, 0.0), clamp(vTone.z, 0.0, 1.0) * skDbg);\n float cutA = smoothstep(skCut.x, skCut.x + skCut.y, vRest.y); if (!gl_FrontFacing && vRest.y < skCut.x + skCut.y * 2.2) discard; gl_FragColor.a *= cutA;\n#include <dithering_fragment>');      /* the wrist fades away softly instead of ending in a flat cut (2026-11-19) */      /* soft warm outline, so a thumb crossing the fingers still stands out */
+          .replace('#include <dithering_fragment>', 'float ndv = abs(dot(normalize(normal), normalize(vViewPosition)));\n float rim = 1.0 - smoothstep(0.04, 0.6, ndv);\n gl_FragColor.rgb *= mix(vec3(1.0), skEdge, rim * skEdgeK);\n gl_FragColor.rgb += rim * rim * skRim;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.0, 1.0, 0.0), clamp(vTone.z, 0.0, 1.0) * skDbg);\n float cutA = smoothstep(skCut.x, skCut.x + skCut.y, vRest.y); if (!gl_FrontFacing) discard;      /* never show the inside of the skin (a fold between the pinky and ring finger on Y showed a dark jagged notch, 2026-11-19) */ gl_FragColor.a *= cutA;\n#include <dithering_fragment>');      /* the wrist fades away softly instead of ending in a flat cut (2026-11-19) */      /* soft warm outline, so a thumb crossing the fingers still stands out */
       }; o.frustumCulled = false; o.castShadow = true; o.receiveShadow = true; } });
   Object.values(H.bones).forEach(b => { b.userData.q0 = b.quaternion.clone(); });
   setup(root);
@@ -1977,7 +1977,7 @@ function shapeFingers() {
   pos.needsUpdate = true; g.computeVertexNormals();
 }
 function setCut(g) { const r = g.attributes.rest; if (!r) return; let lo = 1e9, hi = -1e9; for (let v = 0; v < r.count; v++) { const y = r.getY(v); if (y < lo) lo = y; if (y > hi) hi = y; } SKU.skCut.value.set(lo + 2, Math.max(8, (hi - lo) * 0.13)); }      /* the lowest 2 mm are gone, then about 13% of the hand's height fades in */
-let GKEY = 'f', CACHED = null; const GEO_VER = 'g3';      /* change it whenever the skin is built differently, so a page holding an older hand never hands this one its old skin */
+let GKEY = 'f', CACHED = null; const GEO_VER = 'g4';      /* change it whenever the skin is built differently, so a page holding an older hand never hands this one its old skin */
 function skin() {
   if (CACHED) { SKU.skO.value.copy(CACHED.sku[0]); SKU.skAx.value.copy(CACHED.sku[1]); SKU.skW.value.copy(CACHED.sku[2]); paintIt(CACHED.lines, CACHED.W); makeNails(); setCut(H.mesh.geometry); return; }
   shapeFingers();
@@ -1995,7 +1995,7 @@ function skin() {
     lines[f].joints = lines[f].joints.map(([x, w]) => [(x - u0) * 1000, w]);
   });
   /* palm coordinates: pinky knuckle side 0 to index side 1, wrist 0 to knuckle line 1 */
-  const W = wp('wrist'), iK = wp('index-finger-phalanx-proximal'), pK = wp('pinky-finger-phalanx-proximal');
+  const W = wp('wrist'), W0 = W.clone(), iK = wp('index-finger-phalanx-proximal'), pK = wp('pinky-finger-phalanx-proximal');
   const ax = iK.clone().sub(pK), axL = ax.length(); ax.normalize(); const ay = new THREE.Vector3(0, 1, 0), kY = (iK.y + pK.y) / 2 - W.y;
   /* where the base of the thumb presses into the palm the two skins cross; a sharp shadow there showed jagged patches, so the shadow is softened in that small area */
   const tA = wp('thumb-metacarpal'), tB = wp('thumb-phalanx-proximal'), tD = tB.clone().sub(tA), tL = tD.length(); tD.normalize();
@@ -2072,6 +2072,11 @@ function skin() {
     const ix = g.index.array, nb = Array.from({ length: n }, () => []);
     for (let i = 0; i < ix.length; i += 3) { const a = ix[i], b = ix[i + 1], c = ix[i + 2]; nb[a].push(b, c); nb[b].push(a, c); nb[c].push(a, b); }
     const zone = new Float32Array(n); for (let v = 0; v < n; v++) zone[v] = Math.min(1, TH[v] * 1.6);
+    /* the webs between neighbouring fingers too (Colleen 2026-11-19: a dark notch where the Y pinky leaves the curled ring finger): the web skin was
+       pulled entirely by one finger or the other, so it tore open when they went different ways; now it shares the pull, like real webbing */
+    { const mm = q => q.clone().sub(W0).multiplyScalar(1000), segs = [['index', 'middle'], ['middle', 'ring'], ['ring', 'pinky']].map(([a, b]) => { const A = mm(wp(a + '-finger-phalanx-proximal')).add(mm(wp(b + '-finger-phalanx-proximal'))).multiplyScalar(0.5), B = mm(wp(a + '-finger-phalanx-intermediate')).add(mm(wp(b + '-finger-phalanx-intermediate'))).multiplyScalar(0.5); return [A, A.clone().lerp(B, 0.45)]; });
+      const pv = new THREE.Vector3(); for (let v = 0; v < n; v++) { pv.set(rest[v * 3], rest[v * 3 + 1], rest[v * 3 + 2]); let d = 1e9; segs.forEach(([A, B]) => { const ab = B.clone().sub(A), t = Math.max(0, Math.min(1, pv.clone().sub(A).dot(ab) / ab.lengthSq())); d = Math.min(d, pv.distanceTo(A.clone().addScaledVector(ab, t))); });
+        const z = 1 - Math.min(1, Math.max(0, (d - 5) / 6)); if (z > zone[v]) zone[v] = z * 0.85; } }
     let W = []; for (let v = 0; v < n; v++) { const o = {}; [[si.getX(v), sw.getX(v)], [si.getY(v), sw.getY(v)], [si.getZ(v), sw.getZ(v)], [si.getW(v), sw.getW(v)]].forEach(([b, w]) => { if (w > 0) o[b] = (o[b] || 0) + w; }); W.push(o); }
     for (let it = 0; it < 25; it++) { const N2 = W.map((o, v) => { const z = zone[v]; if (z < 0.02 || !nb[v].length) return o; const acc = {}; nb[v].forEach(u => { const ou = W[u]; for (const b in ou) acc[b] = (acc[b] || 0) + ou[b] / nb[v].length; });
         const out = {}; const keys = new Set(Object.keys(o).concat(Object.keys(acc))); keys.forEach(b => { out[b] = (o[b] || 0) * (1 - 0.6 * z) + (acc[b] || 0) * 0.6 * z; }); return out; }); W = N2; }
