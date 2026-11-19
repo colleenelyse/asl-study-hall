@@ -2143,30 +2143,30 @@ const FIST = [85, 100, 55, 0], UP = [0, 0, 0, 0];
 const TRY_E = (() => { const q = new URLSearchParams(location.search), f = q.get('ef'), t = q.get('et'); return f || t ? { f: f ? f.split(',').map(Number) : null, t: t ? t.split(',').map(Number) : null } : null; })();      /* test page only: try E shapes from the address */
 const POSE = {  /* thumb angles found by solving for where the thumb tip sits in Colleen's photos (A-F, L, O, P, Q, S, V from photos; M N T Z also from photos; G H J K R U W X Y from the chart); the others are guesses */
   rest: { f: Array(4).fill([8, 10, 5, 0]), t: [10, 0, 0, 5, 5], w: [0, 0, 0] },
-  A: {f: [[85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [16, -27, 47, -10, -10], w: [0, 0, 0]},
-  B: {f: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], t: [50, -45, -60, 50, 20], w: [0, 0, 0]},      /* thumb flat across the palm, not curled (Colleen, realistic try 2) */
+  A: {f: [[85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [8, -35, 54, -10, -10], w: [0, 0, 0]}      /* touching letters (2026-11-19): thumb moved so skin no longer sinks into skin (was t [16,-27,47,-10,-10]; the camera keeps that, CAM_POSE) */,
+  B: {f: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], t: [50, -37, -53, 58, -4], w: [0, 0, 0]}      /* touching letters (2026-11-19): thumb moved so skin no longer sinks into skin (was t [50,-45,-60,50,20]; the camera keeps that, CAM_POSE) */,      /* thumb flat across the palm, not curled (Colleen, realistic try 2) */
   C: {f: [[40, 45, 30, 0], [41, 45, 30, 0], [42, 45, 30, 0], [43, 45, 30, 0]], t: [15, 22, -60, 20, 30], w: [0, 70, -20]},      /* 2026-10-14 (Colleen, from her photo and drawing): the thumb points forward under the fingers with a clear space, so it is not an O; the wrist tilts back toward the speller */
-  D: {f: [[0, 0, 0, 0], [60, 90, 50, 0], [60, 90, 50, 0], [60, 90, 50, 0]], t: [11, -10, -38, 82, 73], w: [0, 0, 0]},
+  D: {f: [[0, 0, 0, 0], [60, 90, 50, 0], [60, 90, 50, 0], [60, 90, 50, 0]], t: [16, -2, -30, 70, 101], w: [0, 0, 0]}      /* touching letters (2026-11-19): thumb moved so skin no longer sinks into skin (was t [11,-10,-38,82,73]; the camera keeps that, CAM_POSE) */,
   E: {f: [[52.5, 92.5, 55, 0], [50, 102.5, 10, 0], [42.5, 95, 15, 0], [35, 70, 45, 0]], t: [67, 0, -90, 60, 0], w: [0, 0, 0]},      /* painted try 2026-11-18 (Colleen: "like frogs on a log"): all four fingertips at the same height and depth, resting on the top edge of a level thumb, nails showing; was f 60,110,80 / t 44,-37,-60,90,45 */
   /* OLD E: thumb straight across, tucked under all four fingertips (Colleen, between her two favourites) */
-  F: {f: [[50, 50, 30, 0], [0, 0, 0, -3], [0, 0, 0, -8], [0, 0, 0, -14]], t: [35, 9, -48, 10, 2], w: [0, 30, 0]},
+  F: {f: [[50, 50, 30, 0], [0, 0, 0, -3], [0, 0, 0, -8], [0, 0, 0, -14]], t: [27, 9, -62, 10, 2], w: [0, 30, 0]}      /* touching letters (2026-11-19): thumb moved so skin no longer sinks into skin (was t [35,9,-48,10,2]; the camera keeps that, CAM_POSE) */,
   G: {f: [[0, 0, 0, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [26, -20, 41, -10, 15], w: [-160, 0, -90]},
   H: {f: [[0, 0, 0, 0], [0, 0, 0, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [60, -17, -39, 31, 40], w: [-160, 0, -90]},
   I: {f: [[85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [0, 0, 0, 0]], t: [1, 8, -60, 90, 40], w: [0, 0, 0]},
   K: {f: [[0, 0, 0, 6], [45, 0, 0, -6], [85, 100, 55, 0], [85, 100, 55, 0]], t: [56, -13, 5, -5, 8], w: [0, 0, 0]},
   L: {f: [[0, 0, 0, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [-33, -25, 56, -10, -10], w: [0, 0, 0]},
-  M: {f: [[64, 88, 20, 0], [64, 88, 20, 0], [66, 88, 20, 0], [85, 100, 55, 0]], t: [92, -40, -10, 60, 63], w: [0, 0, 0]},      /* painted try (Colleen 2026-11-18): the fingers over the thumb sit higher than the curled pinky (was 85,95,15); the thumb tip peeks out between ring and pinky, like N (was t 84,-36,-36,46,90) */
-  N: {f: [[62, 86, 20, 0], [62, 86, 20, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [68, -40, -4, 67, 63], w: [0, 0, 0]},      /* painted try: index and middle over the thumb a little higher; was 85,95,15 */
-  O: {f: [[45, 60, 40, 0], [45, 60, 40, 0], [45, 60, 40, 0], [45, 60, 40, 0]], t: [32, -2, -47, 20, 12], w: [0, 70, 0]},
+  M: {f: [[64, 88, 20, 0], [64, 88, 20, 0], [66, 64, 26, 0], [85, 100, 55, 0]], t: [92, -28, -10, 75, 25.5], w: [0, 0, 0]}      /* touching letters 2026-11-19: was f [[64,88,20,0],[64,88,20,0],[66,88,20,0],[85,100,55,0]] t [92,-40,-10,60,63] (skin sank into the thumb) */,      /* painted try (Colleen 2026-11-18): the fingers over the thumb sit higher than the curled pinky (was 85,95,15); the thumb tip peeks out between ring and pinky, like N (was t 84,-36,-36,46,90) */
+  N: {f: [[62, 86, 20, 0], [62, 74, 20, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [56, -40, -4, 91, 67.5], w: [0, 0, 0]}      /* touching letters 2026-11-19: was f [[62,86,20,0],[62,86,20,0],[85,100,55,0],[85,100,55,0]] t [68,-40,-4,67,63] (skin sank into the thumb) */,      /* painted try: index and middle over the thumb a little higher; was 85,95,15 */
+  O: {f: [[45, 60, 40, 0], [45, 60, 40, 0], [45, 60, 40, 0], [45, 60, 40, 0]], t: [40, 6, -49, 28, 20], w: [0, 70, 0]}      /* touching letters (2026-11-19): thumb moved so skin no longer sinks into skin (was t [32,-2,-47,20,12]; the camera keeps that, CAM_POSE) */,
   P: {f: [[0, 0, 0, 6], [45, 0, 0, -6], [85, 100, 55, 0], [85, 100, 55, 0]], t: [56, -13, 5, -5, 8], w: [104, -14, -43]},
   Q: {f: [[0, 0, 0, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [26, -20, 41, -10, 15], w: [166, 8, -32]},
   R: {f: [[28, 0, 0, -16], [-16, 0, 0, 6], [85, 100, 55, 0], [85, 100, 55, 0]], t: [60, -17, -39, 31, 40], w: [0, 0, 0]},      /* 2026-10-15 (Colleen, choice B): the index crosses IN FRONT of the middle finger (the right way), the pair upright, and the two fingers rest on each other instead of melting together */
-  S: {f: [[85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [4, 8, -60, 84, 77], w: [0, 0, 0]},
-  T: {f: [[60, 85, 20, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [38, -35, -11, 78, 9], w: [0, 0, 0]},
+  S: {f: [[95.5, 110.5, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [-8, 32, -60, 72, 95], w: [0, 0, 0]}      /* touching letters 2026-11-19: was f [[85,100,55,0],[85,100,55,0],[85,100,55,0],[85,100,55,0]] t [4,8,-60,84,77] (skin sank into the thumb) */,
+  T: {f: [[48, 73, 20, 0], [82, 124, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [14, -23, -35, 78, 25.5], w: [0, 0, 0]}      /* touching letters 2026-11-19: was f [[60,85,20,0],[85,100,55,0],[85,100,55,0],[85,100,55,0]] t [38,-35,-11,78,9] (skin sank into the thumb) */,
   U: {f: [[0, 0, 0, 0], [0, 0, 0, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [60, -17, -39, 31, 40], w: [0, 0, 0]},
   V: {f: [[0, 0, 0, 18], [0, 0, 0, -10], [80, 95, 50, 0], [85, 100, 55, 0]], t: [67, -15, -59, 33, 16], w: [0, 0, 0]},
   W: {f: [[0, 0, 0, 18], [0, 0, 0, 0], [0, 0, 0, -18], [85, 100, 55, 0]], t: [73, -25, -60, 42, 65], w: [0, 0, 0]},
-  X: {f: [[0, 95, 65, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [16, -13, -52, 62, 65], w: [0, 90, 0]},      /* side view, as Colleen's X drawing: palm to the left, index up and hooked over */
+  X: {f: [[0, 95, 65, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [8, -5, -52, 62, 60], w: [0, 90, 0]}      /* touching letters (2026-11-19): thumb moved so skin no longer sinks into skin (was t [16,-13,-52,62,65]; the camera keeps that, CAM_POSE) */,      /* side view, as Colleen's X drawing: palm to the left, index up and hooked over */
   Y: {f: [[85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [10, 32, 8, -40]], t: [1, -28, 47, -1, -3], w: [0, 0, 0]}
 };
 /* J and Z move: a list of steps the hand passes through. p = [x, y] shifts the whole hand (meters, as the student sees it) */
@@ -2994,7 +2994,16 @@ const letterStill = c => { const P0 = POSE[c]; return Array.isArray(P0) ? P0[0] 
    them (wrist; thumb base to tip; then each finger knuckle to tip), so the fingerspelling reader can compare a student's hand to Colleen's. */
 const MP_JOINTS = ['wrist', 'thumb-metacarpal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip'].concat(...FING.map(f => [f + '-phalanx-proximal', f + '-phalanx-intermediate', f + '-phalanx-distal', f + '-tip']));
 /* the camera reads students' hands against the letter shapes as they were before the realistic hand (Colleen 2026-11-19: keep the old shapes) */
-const CAM_POSE = { E: {f: [[60, 110, 80, 0], [60, 110, 80, 0], [60, 110, 80, 0], [60, 110, 80, 0]], t: [44, -37, -60, 90, 45], w: [0, 0, 0]},
+const CAM_POSE = {      /* the camera reader keeps the shapes it was taught with (Colleen 2026-11-19): E, M, N, and the touching-letter thumbs */
+  A: {f: [[85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [16, -27, 47, -10, -10], w: [0, 0, 0]},
+  B: {f: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], t: [50, -45, -60, 50, 20], w: [0, 0, 0]},
+  D: {f: [[0, 0, 0, 0], [60, 90, 50, 0], [60, 90, 50, 0], [60, 90, 50, 0]], t: [11, -10, -38, 82, 73], w: [0, 0, 0]},
+  F: {f: [[50, 50, 30, 0], [0, 0, 0, -3], [0, 0, 0, -8], [0, 0, 0, -14]], t: [35, 9, -48, 10, 2], w: [0, 30, 0]},
+  O: {f: [[45, 60, 40, 0], [45, 60, 40, 0], [45, 60, 40, 0], [45, 60, 40, 0]], t: [32, -2, -47, 20, 12], w: [0, 70, 0]},
+  X: {f: [[0, 95, 65, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [16, -13, -52, 62, 65], w: [0, 90, 0]},
+  S: {f: [[85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [4, 8, -60, 84, 77], w: [0, 0, 0]},
+  T: {f: [[60, 85, 20, 0], [85, 100, 55, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [38, -35, -11, 78, 9], w: [0, 0, 0]},
+  E: {f: [[60, 110, 80, 0], [60, 110, 80, 0], [60, 110, 80, 0], [60, 110, 80, 0]], t: [44, -37, -60, 90, 45], w: [0, 0, 0]},
   M: {f: [[85, 95, 15, 0], [85, 95, 15, 0], [85, 95, 15, 0], [85, 100, 55, 0]], t: [84, -36, -36, 46, 90], w: [0, 0, 0]},
   N: {f: [[85, 95, 15, 0], [85, 95, 15, 0], [85, 100, 55, 0], [85, 100, 55, 0]], t: [68, -40, -4, 67, 63], w: [0, 0, 0]} };
 function poseJoints(c) { return POSE[c] ? jointsOf(CAM_POSE[c] || letterStill(c)) : null; }
