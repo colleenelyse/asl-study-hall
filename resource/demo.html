@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <meta charset="utf-8"><link rel="icon" type="image/png" sizes="64x64" href="../img/logo-64.png"><link rel="icon" type="image/png" sizes="32x32" href="../img/logo-32.png"><link rel="apple-touch-icon" href="../img/logo-180.png">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -527,7 +528,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.89'
+var VERSION = '2.90'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -6466,7 +6467,7 @@ function go(v) {
 function drawNav() {
   var items = MODE === 'cm' ? [] : MODE === 'teacher'
     ? [['overview', 'Overview'], ['upcoming', 'Upcoming tests'], ['retakes', 'Retakes'], ['who', '🔎 Show me who'], B.hallPass ? ['passes', '🚻 Hall passes'] : null, F('tc') ? ['tc', '📬 Tests & codes'] : null, ['seating', '🪑 Seating'], ['photos', 'Students & photos'], B.ai ? ['breakdown', '✨ AI Breakdown'] : null, ['settings', '⚙️ Settings'], ['me', 'Student view']]
-    : (gate() ? [] : [F('tools') ? ['tools', '🏠 Home'] : ['checkin', 'Today'], ['myiep', '📘 My IEP'], F('focus') && !F('tools') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('calc') && !F('tools') ? ['calc', '🧮 Calculator'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
+    : (gate() ? [] : [F('tools') ? ['tools', '🏠 Home'] : ['checkin', 'Today'], graded().length ? ['grades', '📊 My grades'] : null, ['myiep', '📘 My IEP'], F('focus') && !F('tools') ? ['focus', '⏱️ Focus'] : null, F('freeTime') && (B.links || []).length ? ['free', '🎮 When I’m done'] : null, F('myWeek') ? ['week', '📅 My week'] : null, F('tests') ? ['tests', 'Tests & reminders'] : null, F('calc') && !F('tools') ? ['calc', '🧮 Calculator'] : null, F('progress') ? ['history', 'My progress'] : null, F('editSchedule') ? ['schedule', 'My schedule'] : null].filter(Boolean));
   items = items.filter(Boolean);
   if (MODE === 'student' && B.teacher) items.push(['teacher', 'Teacher view']);
   var pb = $('prevBar');
@@ -6480,6 +6481,7 @@ function drawNav() {
 }
 function navTo(v) {
   if (v === 'calc') return calcOpen();          // opens over the page
+  if (v === 'grades') return grOpen();          // 2.90: one tap to enter grades, any day
   if (v === 'seating') { if (B.url) window.open(B.url + '?view=seating', '_top'); else toast('Publish the app first (Deploy) to use seating charts.'); return; }
   if (v === 'me') {
     if (DIRTY && !confirm('Leave without saving?')) return; setDirty(false);
@@ -7875,13 +7877,28 @@ function drawTools() {
   var name = String(D.profile.name || '').split(' ')[0], sl = startList(), x = sl[SH_I % sl.length];
   var hp = B.hallPass && typeof HP !== 'undefined' && HP && HP.mine ? '<div class="card" style="margin:0 0 12px;border-color:var(--warn);background:var(--warn-soft)"><div class="row"><b class="grow">🚻 You’re out on a pass (' + esc(HP.mine.place || '') + ')</b><button class="btn primary" onclick="hpOpen()">I’m back</button></div></div>' : '';
   var xq = homeCkDone() ? extraPick() : '', xh = xq === 'acc' ? accHelpCard() : xq === 'skill' ? (D.skillChecks || []).filter(function (c) { return c.due || (SKC && SKC.goal === c.goal); }).slice(0, 1).map(function (c) { return skillCard(c, true); }).join('') : xq === 'accweek' ? accWeekCard() : xq === 'future' ? futureCard(true) : '';
-  var h = '<h1>' + (name ? 'Hi ' + esc(name) : 'Home') + '</h1><p class="sub">' + fmtDay(B.today) + '</p>' + codeBanner() + hp + homeCk() +
+  var h = '<h1>' + (name ? 'Hi ' + esc(name) : 'Home') + '</h1><p class="sub">' + fmtDay(B.today) + '</p>' + codeBanner() + hp + homeCk() + homeGrades() +
     '<div class="home-next"><b class="small" style="display:block">▶ NEXT UP</b><p>' + x.t + '</p><div class="row" style="gap:8px">' + (x.go ? '<button class="btn primary" onclick="shGo(\'' + x.go + '\')">Let’s go</button>' : '') + (sl.length > 1 ? '<button class="btn" onclick="SH_I++;drawTools()">Something else</button>' : '') + '</div></div>' +
     '<div class="card" id="homeDue">' + homeDueHtml() + '</div>' + qsQuick() + xh +
     homeToolsHtml() + '<div id="toolBox"></div>' + homeStuff();
   $('main').innerHTML = h; toolDraw();
   if (TILE === 'grades' || TILE === 'week') drawSugg();
   if ($('ckSave')) $('ckSave').onclick = saveCheckin;
+}
+// 2.90: entering grades is always one tap away: 📊 My grades in the menu and this bar on Home (big and orange while grades are due)
+function homeGrades() {
+  if (!graded().length) return '';
+  var due = checkMode() && !gradesDone() && !skipped('grades'), n = grLeft();
+  if (due) return '<div class="home-ck wait home-gr"><span class="grow">📊 <b>' + (B.checkDay && B.today >= B.checkDay ? 'Grade check day!' : 'Time to enter your grades.') + '</b> ' + (n ? n + ' class' + (n === 1 ? '' : 'es') + ' still need' + (n === 1 ? 's' : '') + ' this week’s grade.' : 'Finish this week’s grades.') + '</span><button class="btn primary" onclick="grOpen()">📊 Enter my grades</button></div>';
+  return '<div class="home-ck"><span class="grow">📊 <b>My grades</b> <span class="small" style="display:inline">' + (gradesDone() ? 'Entered this week ✓ You can update them any time.' : 'Update them any time.') + '</span></span><button class="btn small" onclick="grOpen()">Update my grades</button></div>';
+}
+function grOpen() {
+  if (DIRTY && !confirm('You have changes that are not saved. Leave without saving?')) return;
+  setDirty(false);
+  if (checkMode()) { CK_EARLY = true; GSUB = 0; return stepGo('grades'); }          // grade check day: the grades step of the check-in
+  TILE = 'grades'; CK = null; STEP = null;
+  if (VIEW === 'tools' || VIEW === 'checkin') { if (VIEW === 'tools') drawTools(); else drawCheckin(); } else go(F('tools') ? 'tools' : 'checkin');
+  var p = $('tilePanel'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function homeCkDone() { return !stepList().some(function (s) { return s.req && !stepDone(s.k); }) && !needPoll(); }
 function homeCk() {          // one line: checked in ✓ (and today's plan), or the check-in waiting for the resource period
