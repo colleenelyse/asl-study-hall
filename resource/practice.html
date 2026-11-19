@@ -254,6 +254,8 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .goal { background: var(--brand-soft); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin: 0 0 12px; }
 .gradw { color: var(--down); font-size: 12px; font-weight: 600; margin: 3px 0; }
 .pjbox { border-left: 3px solid var(--line); padding: 2px 0 2px 10px; margin: 0 0 6px; }
+.fe-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}.fe-prev{position:sticky;top:12px;border:2px dashed var(--line);border-radius:14px;padding:10px 14px;max-height:85vh;overflow:auto;background:var(--bg)}.fe-prevtag{font-weight:700;font-size:13px;color:var(--soft);margin-bottom:6px}.fe-prev h1{font-size:22px}.fe-site{border-top:1px solid var(--line);padding:8px 0}.fe-sec input[type=text]{width:100%;box-sizing:border-box}.fe-site .row input[type=text]{width:auto}
+@media (max-width:820px){.fe-wrap{grid-template-columns:1fr}.fe-prev{position:static;max-height:none}}
 .sitegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
 .site { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; text-decoration: none; color: var(--ink); background: var(--card); }
 .site:hover { border-color: var(--brand); }
@@ -528,7 +530,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.90'
+var VERSION = '2.91'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -4568,6 +4570,36 @@ function freeLinks_() {
   out.forEach(function (x) { x.desc = descs[x.section] || ''; });
   return out.length ? out.slice(0, 60) : settings_().links.map(function (l) { return { section: 'Free time', desc: '', name: l.name, url: l.url, why: '', star: false }; });
 }
+// 2.91: the teacher's preview and editor for the free time page (Settings › 🎮 Free time page › Preview and edit)
+// { list: freeLinks_(), opened: { site name: times opened this semester }, on: the switch }
+function api_freeEdit() {
+  teacherOnly_();
+  var sem = semStart_(), opened = {};
+  var sh = ss_().getSheetByName('Free time');
+  if (sh && sh.getLastRow() > 1) rows_('Free time').forEach(function (r) { if (whenDay_(r[0]) >= sem) { var n = String(r[2]).trim(); if (n) opened[n] = (opened[n] || 0) + 1; } });
+  return { list: freeLinks_(), opened: opened, on: !!settings_().f.freeTime };
+}
+// list = [{ section, desc, name, url, why, star }] in order; the section description goes on the section's first row only. Replaces the Free time links tab.
+function api_saveFreeLinks(list) {
+  teacherOnly_();
+  var seen = {}, out = [];
+  (list || []).slice(0, 60).forEach(function (x) {
+    x = x || {};
+    var name = clean_(x.name, 60), url = clean_(x.url, 500), sec = clean_(x.section, 60) || 'More';
+    if (!name && !url) return;
+    if (!name) throw new Error('A site with the address ' + url + ' needs a name.');
+    if (!/^https?:\/\/[^\s]+\.[^\s]+$/i.test(url)) throw new Error(name + ': the web address must start with https:// (for example https://freerice.com).');
+    out.push([sec, seen[sec] ? '' : clean_(x.desc, 300), name, url, clean_(x.why, 200), x.star ? 'Yes' : '']);
+    seen[sec] = true;
+  });
+  if (!out.length) throw new Error('Add at least one site. (To hide the page, turn off “🎮 Free time page” in Settings.)');
+  locked_(function () {
+    var sh = sheet_('Free time links'), n = sh.getLastRow();
+    if (n > 1) sh.getRange(2, 1, n - 1, 6).clearContent();
+    sh.getRange(2, 1, out.length, 6).setNumberFormat('@').setValues(out);
+  });
+  return freeLinks_();
+}
 function api_freeTime(name) { var email = need_(); locked_(function () { sheet_('Free time').appendRow([stamp_(), email, clean_(name, 60)]); }); return true; }
 
 // Student: the steps of one project (test id) [{ step, due, done }]; replaces that project's steps.
@@ -6495,7 +6527,7 @@ function navTo(v) {
 function draw() {
   var f = {
     welcome: drawWelcome, schedule: drawSchedule, profile: drawProfile, checkin: drawCheckin, tools: drawTools, quick: drawQuick, tests: drawTests, week: drawWeek, history: drawHistory, focus: drawFocusPage, free: drawFree,
-    myiep: drawMyIep, cm: drawCm, tc: drawTc, overview: drawOverview, upcoming: drawUpcoming, retakes: drawRetakes, settings: drawSettings, who: drawWho, photos: drawPhotos, tstudent: drawTStudent, breakdown: drawBreakdown, passes: drawPasses
+    myiep: drawMyIep, cm: drawCm, tc: drawTc, overview: drawOverview, upcoming: drawUpcoming, retakes: drawRetakes, settings: drawSettings, who: drawWho, photos: drawPhotos, tstudent: drawTStudent, breakdown: drawBreakdown, passes: drawPasses, freeedit: drawFreeEdit
   }[VIEW];
   f();
 }
@@ -9411,17 +9443,78 @@ function accSave() {
 }
 
 /* ---------- student: free time links (logged) ---------- */
-function drawFree() {
+function drawFree() { $('main').innerHTML = freeHtml(B.links, false); }
+// the student page (also the teacher's live preview: links don't log, and an empty section is skipped)
+function freeHtml(links, prev) {
   var secs = [];
-  B.links.forEach(function (l) { if (secs.indexOf(l.section) < 0) secs.push(l.section); });
-  $('main').innerHTML = '<h1>🎮 When I’m done</h1><p class="sub">Finished your work for today? Pick something. (Your teacher can see which ones you open.)</p>' +
+  links.forEach(function (l) { if (secs.indexOf(l.section) < 0) secs.push(l.section); });
+  return '<h1>🎮 When I’m done</h1><p class="sub">Finished your work for today? Pick something. (Your teacher can see which ones you open.)</p>' +
+    (secs.length ? '' : '<p class="small">No sites yet.</p>') +
     secs.map(function (sec) {
-      var list = B.links.map(function (l, k) { return [l, k]; }).filter(function (x) { return x[0].section === sec; }), desc = list[0][0].desc;
+      var list = links.map(function (l, k) { return [l, k]; }).filter(function (x) { return x[0].section === sec; }), desc = list[0][0].desc;
       return '<div class="card"><h2>' + esc(sec) + '</h2>' + (desc ? '<p class="hint" style="margin:2px 0 10px">' + esc(desc) + '</p>' : '') + '<div class="sitegrid">' + list.map(function (x) {
         var l = x[0];
-        return '<a href="' + esc(l.url) + '" target="_blank" rel="noopener" class="site" onclick="freeGo(' + x[1] + ')"><b>' + (l.star ? '⭐ ' : '') + esc(l.name) + '</b>' + (l.why ? '<span>' + esc(l.why) + '</span>' : '') + '</a>';
+        return '<a href="' + esc(l.url) + '" target="_blank" rel="noopener" class="site"' + (prev ? '' : ' onclick="freeGo(' + x[1] + ')"') + '><b>' + (l.star ? '⭐ ' : '') + esc(l.name || '(no name yet)') + '</b>' + (l.why ? '<span>' + esc(l.why) + '</span>' : '') + '</a>';
       }).join('') + '</div></div>';
     }).join('');
+}
+
+/* ---------- 2.91: the teacher's preview and editor for the free time page (Settings, or Overview › More) ---------- */
+var FE = null, HTTPS = 'https:' + '/' + '/';          // { secs: [{ name, desc, sites: [{ name, url, why, star }] }], opened, on }
+function feOpen() { FE = null; go('freeedit'); }
+function feLinks() { var out = []; FE.secs.forEach(function (sc) { sc.sites.forEach(function (x) { out.push({ section: sc.name.trim() || 'More', desc: sc.desc, name: x.name.trim(), url: x.url.trim(), why: x.why, star: x.star }); }); }); return out; }
+function drawFreeEdit() {
+  if (!FE) {
+    $('main').innerHTML = '<div class="loading">Loading the free time page…</div>';
+    call('api_freeEdit').then(function (r) {
+      var secs = [];
+      r.list.forEach(function (l) { var sc = secs.filter(function (x) { return x.name === l.section; })[0]; if (!sc) { sc = { name: l.section, desc: l.desc || '', sites: [] }; secs.push(sc); } sc.sites.push({ name: l.name, url: l.url, why: l.why || '', star: !!l.star }); });
+      FE = { secs: secs, opened: r.opened || {}, on: r.on }; drawFreeEdit();
+    }).catch(oops);
+    return;
+  }
+  var n = 0; FE.secs.forEach(function (sc) { n += sc.sites.length; });
+  var inp = function (v, at, ph, max, w) { return '<input type="text" value="' + esc(v) + '" maxlength="' + max + '" placeholder="' + ph + '" oninput="feSet(' + at + ',this.value)"' + (w ? ' style="' + w + '"' : '') + '>'; };
+  var h = '<h1>🎮 Free time page</h1><p class="sub">The “When I’m done” page students open when they finish their work. Edit it on the left; the right side shows what students will see. Press <b>Save</b> when you’re done.</p>' +
+    (FE.on ? '' : '<div class="card" style="background:var(--warn-soft);border-color:var(--warn)"><b>This page is turned off.</b> <span class="small" style="display:inline">Students won’t see it until you turn on “🎮 Free time page” in ⚙️ Settings (Pages and tools).</span></div>') +
+    '<div class="fe-wrap"><div class="fe-edit">' +
+    FE.secs.map(function (sc, i) {
+      return '<div class="card fe-sec"><div class="row" style="gap:6px"><b class="small" style="display:inline">Section</b><span class="grow"></span>' +
+        '<button class="btn small" title="Move this section up"' + (i ? '' : ' disabled') + ' onclick="feMoveSec(' + i + ',-1)">▲</button><button class="btn small" title="Move this section down"' + (i < FE.secs.length - 1 ? '' : ' disabled') + ' onclick="feMoveSec(' + i + ',1)">▼</button><button class="btn small" title="Delete this section and its sites" onclick="feDelSec(' + i + ')">🗑️</button></div>' +
+        inp(sc.name, '\'' + i + '\',\'name\'', 'Section name, like Daily Challenges', 60, 'font-weight:700;margin:6px 0') +
+        inp(sc.desc, '\'' + i + '\',\'desc\'', 'A line under the heading (optional)', 300, 'margin:0 0 8px') +
+        sc.sites.map(function (x, j) {
+          var at = '\'' + i + '.' + j + '\'', o = FE.opened[x.name.trim()] || 0;
+          return '<div class="fe-site"><div class="row" style="gap:6px">' + inp(x.name, at + ',\'name\'', 'Site name', 60, 'flex:1;min-width:120px;font-weight:600') +
+            '<label class="small" style="display:inline-flex;gap:4px;align-items:center" title="A star shows next to the name"><input type="checkbox"' + (x.star ? ' checked' : '') + ' onchange="feSet(' + at + ',\'star\',this.checked)">⭐</label>' +
+            '<button class="btn small" title="Up"' + (j ? '' : ' disabled') + ' onclick="feMove(' + i + ',' + j + ',-1)">▲</button><button class="btn small" title="Down"' + (j < sc.sites.length - 1 ? '' : ' disabled') + ' onclick="feMove(' + i + ',' + j + ',1)">▼</button><button class="btn small" title="Remove this site" onclick="feDel(' + i + ',' + j + ')">🗑️</button></div>' +
+            inp(x.url, at + ',\'url\'', 'https:' + '/' + '/…', 500, 'font-size:13px;margin:4px 0') + inp(x.why, at + ',\'why\'', 'Why it earns a spot (optional, shows under the name)', 200, 'font-size:13px') +
+            '<span class="small">' + (o ? 'Opened ' + o + ' time' + (o === 1 ? '' : 's') + ' this semester' : 'Not opened yet this semester') + (/^https?:/i.test(x.url.trim()) ? ' · <a href="' + esc(x.url.trim()) + '" target="_blank" rel="noopener">Try the link</a>' : '') + '</span></div>';
+        }).join('') +
+        '<button class="btn small" onclick="feAdd(' + i + ')">+ Add a site</button></div>';
+    }).join('') +
+    '<button class="btn" onclick="feAddSec()">+ Add a section</button>' +
+    '</div><div class="fe-prev"><div class="fe-prevtag">👁 What students see</div><div id="fePrev"></div></div></div>' +
+    '<div class="savebar"><span class="status small" id="status">' + n + ' of 60 sites</span><button class="btn" onclick="go(\'settings\')">⚙️ Settings</button><button class="btn primary" id="feSave" onclick="feSave()">Save</button></div>';
+  $('main').innerHTML = h; fePrev();
+}
+function fePrev() { var el = $('fePrev'); if (el) el.innerHTML = freeHtml(feLinks(), true); }
+function feSet(at, k, v) { var p = String(at).split('.'), sc = FE.secs[+p[0]], o = p.length > 1 ? sc.sites[+p[1]] : sc; o[k] = v; setDirty(true); fePrev(); }
+function feRe() { setDirty(true); drawFreeEdit(); }
+function feAdd(i) { var c = 0; FE.secs.forEach(function (sc) { c += sc.sites.length; }); if (c >= 60) return alert('The page holds up to 60 sites.'); FE.secs[i].sites.push({ name: '', url: HTTPS, why: '', star: false }); feRe(); var l = document.querySelectorAll('.fe-sec')[i].querySelectorAll('.fe-site'); if (l.length) l[l.length - 1].querySelector('input').focus(); }
+function feAddSec() { FE.secs.push({ name: 'New section', desc: '', sites: [{ name: '', url: HTTPS, why: '', star: false }] }); feRe(); }
+function feDel(i, j) { var x = FE.secs[i].sites[j]; if ((x.name || x.url.length > 8) && !confirm('Remove ' + (x.name || 'this site') + '?')) return; FE.secs[i].sites.splice(j, 1); if (!FE.secs[i].sites.length && !FE.secs[i].name.trim()) FE.secs.splice(i, 1); feRe(); }
+function feDelSec(i) { var sc = FE.secs[i]; if (sc.sites.length && !confirm('Delete the section “' + (sc.name || '') + '” and its ' + sc.sites.length + ' site' + (sc.sites.length === 1 ? '' : 's') + '?')) return; FE.secs.splice(i, 1); feRe(); }
+function feMove(i, j, d) { var l = FE.secs[i].sites, t = l[j]; l[j] = l[j + d]; l[j + d] = t; feRe(); }
+function feMoveSec(i, d) { var l = FE.secs, t = l[i]; l[i] = l[i + d]; l[i + d] = t; feRe(); }
+function feSave() {
+  var list = feLinks().filter(function (x) { return x.name || (x.url && x.url !== HTTPS); });
+  var bad = list.filter(function (x) { return !x.name || !/^https?:\/\/\S+\.\S+$/i.test(x.url); })[0];
+  if (bad) return alert((bad.name || 'A site') + ': ' + (!bad.name ? 'type a name.' : 'the web address must start with ' + HTTPS + ' (for example ' + HTTPS + 'freerice.com).'));
+  if (!list.length) return alert('Add at least one site. (To hide the page, turn off “🎮 Free time page” in Settings.)');
+  var b = $('feSave'); b.disabled = true; b.textContent = 'Saving…';
+  call('api_saveFreeLinks', list).then(function (r) { B.links = r; setDirty(false); FE = null; toast('Free time page saved: students see it the next time they reload'); drawFreeEdit(); })
+    .catch(function (e) { b.disabled = false; b.textContent = 'Save'; oops(e); });
 }
 function freeGo(k) { call('api_freeTime', B.links[k].name).catch(function () {}); }
 
@@ -10319,7 +10412,7 @@ function drawOverview() {
   var weekEnd = addDays(TD.week, 6), testsWk = TD.tests.filter(function (t) { return t.date <= addDays(TD.today, 7) && (!FILTER.period || inPer.some(function (s) { return s.email === t.email; })); }).length;
   var h = '<div class="row" style="margin-bottom:6px"><h1 class="grow">Week of ' + fmtDay(TD.week) + '</h1>' +
     (B.kiosk ? '<button class="btn small" onclick="toast(\'Syncing with the kiosk…\');call(\'api_kioskSync\').then(function (r) { TD = null; toast(r.students + \' students, \' + r.added + \' new, \' + r.photos + \' photos\'); PHOTOS = {}; drawOverview(); }).catch(oops)">🔄 Sync from kiosk</button>' : '') +
-    '<button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><button class="btn small" onclick="raOpen()">📦 Progress reports</button><details class="ov-more"><summary class="btn small">More ▾</summary><div class="ov-more-box"><button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="phoneOpen()">📱 Phone page</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/tour.html">🧭 Student screens</a><button class="btn small" onclick="cmOpen()">📧 Email counselors</button></div></details><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
+    '<button class="btn small" onclick="ipOpen()">📋 Paste from an IEP</button><button class="btn small' + (B.checkOv ? ' primary' : '') + '" onclick="ovOpen()">' + (B.checkOv ? '📊 Today is a grade check day ✓' : '📊 Make today a grade check day') + '</button><button class="btn small" onclick="raOpen()">📦 Progress reports</button><details class="ov-more"><summary class="btn small">More ▾</summary><div class="ov-more-box"><button class="btn small" onclick="call(\'api_refreshGoalData\').then(function (n) { toast(\'Goal data tab updated for \' + n + \' students\'); }).catch(oops)">🎯 Update Goal data tab</button><button class="btn small" onclick="giOpen()">📥 Import IEP goals</button><button class="btn small" title="Puts every goal and benchmark on one tab of the sheet, sorted by student" onclick="allGoalsTab()">📋 Update the All goals tab</button><button class="btn small" onclick="welcomeOpen()">👋 Welcome tips</button><button class="btn small" onclick="feOpen()">🎮 Free time page</button><a class="btn small" target="_blank" title="Steps for students who can’t open the app (a personal Google account). Project it or share the link." href="' + SIGNIN_URL + '">🔑 Sign-in help</a><button class="btn small" onclick="phoneOpen()">📱 Phone page</button><button class="btn small" onclick="dcOpen()">🩺 Check the data</button><a class="btn small" target="_blank" title="A practice copy of the student view to show on the projector while students set up. Nothing in it is saved." href="' + 'https:' + '/' + '/asl.cool/resource/tour.html">🧭 Student screens</a><button class="btn small" onclick="cmOpen()">📧 Email counselors</button></div></details><button class="btn small" onclick="tWeek(-7)">◀ Earlier</button>' + (TD.week < TD.thisWeek ? '<button class="btn small" onclick="tWeek(7)">Later ▶</button>' : '') + '</div>' +
     rightNow(inPer) + (B.hallPass ? '<div id="hpBoard">' + hpBoardHtml() + '</div>' : '') + attnPanel() + retNotice() +          // 2.70: what needs the teacher now comes first; the other notes go under the list
 
     '<div class="tiles"><div class="tile"><b>' + inPer.filter(function (s) { return s.checkedIn; }).length + ' / ' + inPer.length + '</b><span>grades checked in this week</span></div>' +
@@ -10729,7 +10822,7 @@ function drawSettings() {
         : x.kind === 'yesno'
         ? '<label class="sw" title="On or off"><input type="checkbox"' + (/^n/i.test(v) ? '' : ' checked') + ' onchange="setChg(' + k + ',this.checked?\'Yes\':\'No\')"><span></span></label>'
         : '<input type="text" value="' + esc(v) + '" oninput="setChg(' + k + ',this.value)"' + (x.kind === 'number' ? ' style="max-width:90px;text-align:center" inputmode="decimal"' : x.kind === 'link' ? ' style="max-width:320px;font-size:12px"' : '') + '>';
-      return '<div class="set-row"><div class="grow"><b>' + esc(label) + '</b><span class="small">' + esc(x.desc) + '</span></div>' + ctl + '</div>';
+      return '<div class="set-row"><div class="grow"><b>' + esc(label) + '</b><span class="small">' + esc(x.desc) + '</span>' + (x.key === 'Students: free time page' ? '<button class="btn small" style="margin-top:6px" onclick="feOpen()">✏️ Preview and edit the page</button>' : '') + '</div>' + ctl + '</div>';
     }).join('') + '</div>';
   });
   h += '<div class="card set-group" id="titlesCard"><h2>Teacher titles</h2><p class="hint" style="margin:-4px 0 8px">Students see “Ms. Orrico” instead of “Annette Orrico.” Pick each teacher’s title once (the app can’t tell from a name). Teachers come from your students’ schedules.</p><div id="titlesList"><p class="small">Loading teachers…</p></div></div>';
