@@ -1614,25 +1614,36 @@ const SKIN_COLOR = `{
   float fingerOn = step(0.5, vTone.y);
   float rPh = mix(Pw.y + 3.0 * sin(Pw.x * 0.09), vSk.x + 1.2 * sin(Pw.x * 0.5 + Pw.y * 0.3), fingerOn) * 12.566 + (vnoise(P * 0.22) - 0.5) * 7.0;
   float ridges = (0.5 + 0.5 * sin(rPh)) * fadeFine(P * 2.2) * palmSide * (1.0 - nail);
-  float da = dot(Pw.xy, vec2(0.82, 0.57)) / 1.3, db = dot(Pw.xy, vec2(-0.82, 0.57)) / 1.3;
-  float fa = 1.0 - smoothstep(0.0, 0.2, min(fract(da), 1.0 - fract(da))), fb = 1.0 - smoothstep(0.0, 0.2, min(fract(db), 1.0 - fract(db)));
-  float furrows = (max(fa, fb * (0.6 + 0.4 * vnoise(P * 0.8))) - fa * fb * 0.6) * fadeFine(P * 2.4) * wb * (1.0 - nail) * (1.0 - stK * 0.7);      /* no bright dot where two furrows cross (the pale specks, 2026-11-19) */
-  c *= 1.0 - furrows * 0.13 - ridges * 0.045;      /* the back's furrows mostly as soft shading, little bump (bumps there made pale specks) */      /* a touch of shadow down in the furrows and pores */
+  vec3 Pd = Pw + vec3(vnoise(P * 0.9 + 31.0) - 0.5, vnoise(P * 0.9 + 47.0) - 0.5, 0.0) * 0.9;      /* a second, finer wobble: real creases are never ruler-straight */
+  float rot = (vnoise(P * 0.06 + 2.0) - 0.5) * 0.9; vec2 ua = vec2(cos(0.6 + rot), sin(0.6 + rot)), ub = vec2(-cos(0.6 - rot), sin(0.6 - rot));      /* the diamonds turn a little across the hand */
+  float da = dot(Pd.xy, ua) / (1.15 + 0.5 * vnoise(P * 0.15 + 9.0)), db = dot(Pd.xy, ub) / (1.15 + 0.5 * vnoise(P * 0.15 + 13.0));
+  float fwa = fwidth(da), fwb = fwidth(db);      /* the creases are drawn smooth at any size (Colleen: the skin looked too smooth; the old fade hid them at every normal size) */
+  float fa = 1.0 - smoothstep(0.06, 0.12 + fwa * 1.2, min(fract(da), 1.0 - fract(da))), fb = 1.0 - smoothstep(0.06, 0.12 + fwb * 1.2, min(fract(db), 1.0 - fract(db)));
+  float furrows = (max(fa, fb * (0.6 + 0.4 * vnoise(P * 0.8))) - fa * fb * 0.6) * (1.0 - smoothstep(0.32, 0.6, max(fwa, fwb))) * (0.55 + 0.45 * vnoise(P * 0.3 + 5.0)) * wb * (1.0 - nail) * (1.0 - stK * 0.7);      /* no bright dot where two furrows cross (the pale specks, 2026-11-19) */
+  c *= 1.0 - furrows * 0.085 - ridges * 0.045;
+  /* MORE LIFE IN THE SKIN (Colleen 2026-11-19: "the skin texture still isn't great"): real skin is never one even color. Soft blotches a few millimetres
+     across (a little redder or browner), and on the back of the hand and fingers the tiny dots of hair follicles, each with a faint shadow. */
+  float mot1 = vnoise(P * 0.11 + 3.0) - 0.5, mot2 = vnoise(P * 0.38 + 19.0) - 0.5;
+  c *= 1.0 + (mot1 * 0.09 + mot2 * 0.05) * (1.0 - nail);
+  c = mix(c, c * vec3(1.04, 0.95, 0.93), clamp(mot2 * 1.6 + 0.2, 0.0, 1.0) * 0.22 * (1.0 - nail));
+  vec3 fcell = floor(Pw * 0.62), fsub = fract(Pw * 0.62) - 0.5; float fh = hash3(fcell);
+  float foll = step(0.72, fh) * (1.0 - smoothstep(0.06, 0.13, length(fsub.xy - (vec2(hash3(fcell + 3.1), hash3(fcell + 7.7)) - 0.5) * 0.5))) * wb * (1.0 - nail) * fadeFine(P * 1.4);
+  c *= 1.0 - foll * 0.22;      /* the back's furrows mostly as soft shading, little bump (bumps there made pale specks) */      /* a touch of shadow down in the furrows and pores */
   if (skDbg > 1.5) c = vec3(clamp(tf, 0.0, 1.0), nail, clamp(back, 0.0, 1.0) * 0.5);
   diffuseColor.rgb = c;
   float pores = 0.0;
 #if SK_OCT > 2
   pores = ((vnoise(P * 2.6) - 0.5) * fadeFine(P * 2.6) + (vnoise(P * 5.5) - 0.5) * 0.5 * fadeFine(P * 5.5)) * (0.9 + 0.3 * palmSide);      /* pores, finer than the picture can hold */
 #endif
-  skinH = ((dd.r - 0.5) * 2.0 + pores * 0.12 + (mA.r - 0.5) * 0.45 * mStr + (ridges - 0.25) * 1.6 - furrows * 0.35) * (1.0 - nail * 0.8);
-  skinRough = -cutRim * 0.25 + (dd.g - 0.5) * 0.7 + (vnoise(P * 0.35 + 7.0) - 0.5) * 0.22 + (vnoise(P * 1.3) - 0.5) * 0.1;      /* uneven shine: real skin is never one smooth gloss */      /* nails are smooth and shiny; polish more so */
+  skinH = ((dd.r - 0.5) * 2.0 + pores * 0.12 + (mA.r - 0.5) * 0.45 * mStr + (ridges - 0.25) * 1.6 - furrows * 0.45 - foll * 0.5 + mot2 * 0.25) * (1.0 - nail * 0.8);
+  skinRough = -cutRim * 0.25 + (dd.g - 0.5) * 0.7 + (vnoise(P * 0.35 + 7.0) - 0.5) * 0.3 + (vnoise(P * 1.3) - 0.5) * 0.16 + foll * 0.1;      /* uneven shine: real skin is never one smooth gloss */      /* nails are smooth and shiny; polish more so */
 }`;
 const SKIN_BUMP = `{
   vec3 skPx = dFdx(-vViewPosition), skPy = dFdy(-vViewPosition);
   float skHx = dFdx(skinH), skHy = dFdy(skinH);
   /* the thumb-base speckles (Colleen 2026-11-18): across a tight fold, neighbouring pixels land on two different layers of skin, so the bump jumps wildly.
      Calm it there: no bump on the fold itself (vTone.z), and any single jump far bigger than skin texture is ignored. */
-  float skJump = abs(skHx) + abs(skHy), skCalm = (1.0 - smoothstep(0.75, 1.0, clamp(vTone.z, 0.0, 1.0)) * 0.9) * (1.0 - smoothstep(0.15, 0.4, skJump));
+  float skJump = abs(skHx) + abs(skHy), skCalm = (1.0 - smoothstep(0.9, 1.0, clamp(vTone.z, 0.0, 1.0)) * 0.9) * (1.0 - smoothstep(0.15, 0.4, skJump));
   skHx *= skCalm; skHy *= skCalm;
   vec3 skR1 = cross(skPy, normal), skR2 = cross(normal, skPx); float skDet = dot(skPx, skR1);
   vec3 skG = sign(skDet) * (skHx * skR1 + skHy * skR2);
@@ -3096,7 +3107,7 @@ window.FSHandP = { create };
 (function () {
 const LOOK = 'fs-hand-look', NAILS = 'fs-nails', get = (k, d) => { try { return localStorage.getItem(k) || d; } catch (e) { return d; } };
 const rgbOf = n => [(n >> 16) & 255, (n >> 8) & 255, n & 255], ofRgb = (r, g, b) => (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b);
-const nudeFor = t => { const [r, g, b] = rgbOf(t); return ofRgb(Math.min(255, r * 1.08 + 18), Math.min(255, g * 0.98 + 10), Math.min(255, b * 0.98 + 12)); };
+const nudeFor = t => { const [r, g, b] = rgbOf(t), L = (r * 0.3 + g * 0.59 + b * 0.11) / 255, k = 0.16 + 0.42 * L, C = [234, 198, 180], m = (x, i) => x + (C[i] - x) * k, o = [m(r, 0), m(g, 1), m(b, 2)], gr = (o[0] + o[1] + o[2]) / 3; return ofRgb(...o.map(x => Math.max(0, Math.min(255, x + (gr - x) * 0.06)))); };      /* Nude (Colleen 2026-11-19: "ugly"): a soft milky beige-pink, a little lighter and less orange than the skin, deeper on darker skin */
 function nails() { try { const v = JSON.parse(get(NAILS, 'null')); return v && v.kind ? v : { kind: 'natural' }; } catch (e) { return { kind: 'natural' }; } }
 function paint(h, sel) { if (!h || !h.polish) return; sel = sel || nails(); const tone = h.tone || 0x9c6a4f;
   if (sel.kind === 'french') h.polish(null, false, true); else if (sel.kind === 'nude') h.polish(nudeFor(tone), true, false); else if (sel.kind === 'color') h.polish(sel.hex, true, false); else h.polish(null, false, false); }

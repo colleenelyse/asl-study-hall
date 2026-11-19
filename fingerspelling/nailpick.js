@@ -14,7 +14,7 @@ const rgbOf = n => [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 const ofRgb = (r, g, b) => (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b);
 /* nude follows the skin: a little lighter and pinker than the skin itself, never grey */
 function natFor(tone) { const [r, g, b] = rgbOf(tone); return ofRgb(Math.min(255, r * 1.12 + 20), Math.min(255, g * 1.0 + 8), Math.min(255, b * 1.02 + 12)); }
-function nudeFor(tone) { const [r, g, b] = rgbOf(tone); return ofRgb(Math.min(255, r * 1.08 + 18), Math.min(255, g * 0.98 + 10), Math.min(255, b * 0.98 + 12)); }
+function nudeFor(tone) { const [r, g, b] = rgbOf(tone), L = (r * 0.3 + g * 0.59 + b * 0.11) / 255, k = 0.16 + 0.42 * L, C = [234, 198, 180], m = (x, i) => x + (C[i] - x) * k, o = [m(r, 0), m(g, 1), m(b, 2)], gr = (o[0] + o[1] + o[2]) / 3; return ofRgb(...o.map(x => Math.max(0, Math.min(255, x + (gr - x) * 0.06)))); }      /* Nude (Colleen 2026-11-19: "ugly"): soft milky beige-pink, lighter and less orange than the skin */
 function apply(hand, sel, tone) {
   if (!hand || !hand.polish) return; sel = sel || { kind: 'natural' };
   if (sel.kind === 'natural') hand.polish(null, false, false);
