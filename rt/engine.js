@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.515';
+var VERSION = '4.517';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -1942,6 +1942,7 @@ function doGet(e) {
   if (e && e.parameter && e.parameter.app === 'signin') return appSigninPage_(e.parameter.back);
   if (e && e.parameter && e.parameter.do === 'canvas' && typeof cvPage_ === 'function') return cvPage_();
   if (e && e.parameter && e.parameter.do === 'sizes') return sizesPage_();
+  if (e && e.parameter && e.parameter.do === 'camsexport') return camsExport_();      /* 4.516 the Teach the Camera samples to Claude (Drive folder) */
   if (e && e.parameter && e.parameter.do === 'timing') return timingPage_();      /* 4.511 where the time goes (teacher only) */      /* 4.510 how big each tab is (teacher only) */      /* 4.509 her /colleen link: Stackers to Canvas now (and every morning) */      /* 4.477 the phone app's Google sign-in; 4.482 back = spellbound / numberwise */
   var name = 'ASL Study';      /* 4.69 (Colleen: slow first load): only the remembered app name, so the page starts loading at once instead of waiting for every unit tab to be read */
   try { name = CacheService.getScriptCache().get('appName') || PropertiesService.getScriptProperties().getProperty('appName') || name; } catch (e) {}
@@ -12702,6 +12703,24 @@ function api_camSampItem(auth, item) {
   var ss = camsBook_(false), sh = ss && ss.getSheetByName(item); if (!sh || sh.getLastRow() < 2) return { item: item, list: [] };
   var v = sh.getRange(2, 1, sh.getLastRow() - 1, CAMS_HEAD.length).getValues();
   return { item: item, list: v.map(function (r) { var d = []; try { d = JSON.parse(str_(r[7])); } catch (e) {} return { sid: str_(r[0]), cls: str_(r[2]), left: !!str_(r[3]), guess: str_(r[4]), z: str_(r[5]), bad: !!str_(r[6]) || (CAMS_REDO.indexOf(item) >= 0 && str_(r[2]) !== CAMS_MODEL && r[1] instanceof Date && r[1].getTime() < CAMS_REDO_AT), dots: d }; }) };
+}
+/* 4.516 (Colleen: "go through the data from when the students taught their hand the camera and see if you can make any improvements"): ?do=camsexport
+   (teacher only) copies every letter and number sample (dots only; no names, no class) into camera-samples-export.json in her synced Drive folder
+   "Sign Recordings for Avatar", replacing the last export, so Claude can read it on her Mac and tune the reader. */
+var CAMS_EXPORT_FOLDER = '1slf4ffghxyLY4fAbPnBb3rIC75NuuY20';
+function camsExport_() {
+  var msg = function (t) { return ContentService.createTextOutput(t); };
+  try { requireTeacher_(); } catch (e) { return msg('Only the teacher can use this page.'); }
+  var ss = camsBook_(false); if (!ss) return msg('There are no camera samples yet.');
+  var out = { made: new Date().toISOString(), items: {} }, n = 0;
+  CAMS_ITEMS.forEach(function (item) {
+    var sh = ss.getSheetByName(item); if (!sh || sh.getLastRow() < 2) return;
+    out.items[item] = sh.getRange(2, 1, sh.getLastRow() - 1, CAMS_HEAD.length).getValues().map(function (r) { var d = null; try { d = JSON.parse(str_(r[7])); } catch (e) {} n++;
+      return { model: str_(r[2]) === CAMS_MODEL ? 1 : 0, t: r[1] instanceof Date ? r[1].getTime() : 0, left: str_(r[3]) ? 1 : 0, read: str_(r[4]), z: str_(r[5]), bad: str_(r[6]) || (CAMS_REDO.indexOf(item) >= 0 && str_(r[2]) !== CAMS_MODEL && r[1] instanceof Date && r[1].getTime() < CAMS_REDO_AT) ? 1 : 0, dots: d }; });
+  });
+  var folder = DriveApp.getFolderById(CAMS_EXPORT_FOLDER), it = folder.getFilesByName('camera-samples-export.json'); while (it.hasNext()) it.next().setTrashed(true);
+  folder.createFile('camera-samples-export.json', JSON.stringify(out), 'application/json');
+  return msg('Done: ' + n + ' samples of ' + Object.keys(out.items).length + ' signs were copied to camera-samples-export.json in your "Sign Recordings for Avatar" Drive folder (dots only, no names or classes). You can close this page and tell Claude.');
 }
 /** Teacher: which classes have Teach the Camera on Home. */
 function api_camSampAssign(auth, list) { requireTeacher_(); var names = static_().classes.map(function (c) { return c.name; }), v = (list instanceof Array ? list : []).map(str_).filter(function (x) { return names.indexOf(x) >= 0; }); PropertiesService.getDocumentProperties().setProperty('camsAssign', JSON.stringify(v)); return { ok: true, list: v }; }
