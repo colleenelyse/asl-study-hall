@@ -1299,8 +1299,8 @@ addEventListener('appinstalled', function () { window.__bip = null; var b = docu
 })();
 </script>
 <script>
-/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.519) */
-window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.519" };
+/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.520) */
+window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.520" };
 (function () {
   function run(ok, fail) {
     return new Proxy({}, { get: function (_, k) {
@@ -1482,6 +1482,13 @@ function boot() {
     view.innerHTML = `<div class="splash"><div class="stack"><h2>We Could Not Load the App</h2><p class="muted">${esc(e.message)}</p>${loginLink()}<button class="btn" data-a="reload">Try again</button></div></div>`;
   });
 }
+/* 4.520 her Home button: send every finished Stacker score that isn't in Canvas yet (the same as the 6 am run), then show what happened */
+ACT.cvall = () => { modal('<h2>📤 Send Stackers to Canvas</h2><div class="spin"></div><p class="small muted">Sending…</p>');
+  call('api_cvPushAll', AUTH).then(r => { let n = 0;
+    const body = r.err ? `<p style="color:#c0392b">${esc(r.err)}</p>` : !r.opps.length ? '<p>None of your Stackers has a Canvas assignment link yet. Edit a Stacker and paste the Canvas assignment link.</p>'
+      : r.opps.map(o => { n += o.sent.length; return `<div class="card" style="padding:10px 12px"><b>${esc(o.title)}</b>${o.err ? `<p class="small" style="color:#c0392b;margin:4px 0 0">${esc(o.err)}</p>` : ''}<p class="small" style="margin:4px 0 0"><b>Sent now:</b> ${o.sent.length ? esc(o.sent.join(', ')) : 'nothing new'}</p>${o.kept.length ? `<p class="small" style="margin:4px 0 0"><b>Not changed</b> (Canvas already has a different score, so yours stays): ${esc(o.kept.join('; '))}</p>` : ''}${o.missing.length ? `<p class="small" style="margin:4px 0 0"><b>Not in the Canvas course:</b> ${esc(o.missing.join(', '))}</p>` : ''}</div>`; }).join('');
+    modal(`<h2>📤 Send Stackers to Canvas</h2><p style="margin:0 0 8px"><b>${n} score${n === 1 ? '' : 's'} sent.</b> <span class="small muted">Only finished scores that aren’t in Canvas yet are sent. It also runs by itself every morning at about 6.</span></p><div class="stack" style="gap:8px;max-height:55vh;overflow:auto">${body}</div><div class="row" style="margin-top:10px"><button class="btn sun" data-a="close">Done</button></div>`);
+  }).catch(e => modal(`<h2>📤 Send Stackers to Canvas</h2><p style="color:#c0392b">${esc(e.message || e)}</p><button class="btn alt" data-a="close">Close</button>`)); };
 ACT.reload = () => { view.innerHTML = '<div class="splash"><div class="spin"></div></div>'; boot(); };
 
 /* 4.76 (Colleen: "anything in ASL 1 should be fair game for ASL 2"): a course includes the earlier levels of the same course (ASL 2 sees ASL 1; ASL 3 sees 1 and 2) */
@@ -2128,7 +2135,7 @@ VIEW.home = () => {
   const first = esc(me.name.split(' ')[0]);
   const goal = S.set.goal, met = goal > 0 && (me.flags.indexOf('G') >= 0 || me.dayCorrect >= goal), tok = esc(S.set.tok), cur = esc(S.set.cur);
   return `<div class="stack home"><div class="stack">
-    ${S.d.teacher ? `<button class="btn sun wide tdash" data-a="tab" data-t="dash">${ic('grid')}Teacher dashboard</button>${sfbNewN() && partOn('feedback') ? `<button class="btn alt sm sfbnew" data-a="tab" data-t="fb">📬 ${sfbNewN()} new student feedback</button>` : ''}${S.chNew ? `<button class="btn alt sm sfbnew" data-a="tab" data-t="chteach">🏆 Summative Stacker: ${[S.chNew.score ? S.chNew.score + (S.chNew.score === 1 ? ' video' : ' videos') + ' to score' : '', S.chNew.fresh ? S.chNew.fresh + ' new' : ''].filter(Boolean).join(' · ')}</button>` : ''}${S.d.guestApp ? `<button class="btn alt sm sfbnew" data-a="guestHi">👋 What to try</button>` : ''}${S.d.guestApp ? `<button class="btn alt sm sfbnew" data-a="guestReset" title="Puts the sample classes back the way they started. Your own account is kept.">↺ Reset the sample classes</button>` : ''}${gifBadN() ? `<button class="btn alt sm sfbnew" data-a="gifbad">⚠️ ${gifBadN()} sign GIF${gifBadN() === 1 ? '' : 's'} not loading</button>` : ''}${viewAsHtml()}` : ''}
+    ${S.d.teacher ? `<button class="btn sun wide tdash" data-a="tab" data-t="dash">${ic('grid')}Teacher dashboard</button>${partOn('chal') ? '<button class="btn alt sm sfbnew" data-a="cvall">📤 Send Stackers to Canvas</button>' : ''}${sfbNewN() && partOn('feedback') ? `<button class="btn alt sm sfbnew" data-a="tab" data-t="fb">📬 ${sfbNewN()} new student feedback</button>` : ''}${S.chNew ? `<button class="btn alt sm sfbnew" data-a="tab" data-t="chteach">🏆 Summative Stacker: ${[S.chNew.score ? S.chNew.score + (S.chNew.score === 1 ? ' video' : ' videos') + ' to score' : '', S.chNew.fresh ? S.chNew.fresh + ' new' : ''].filter(Boolean).join(' · ')}</button>` : ''}${S.d.guestApp ? `<button class="btn alt sm sfbnew" data-a="guestHi">👋 What to try</button>` : ''}${S.d.guestApp ? `<button class="btn alt sm sfbnew" data-a="guestReset" title="Puts the sample classes back the way they started. Your own account is kept.">↺ Reset the sample classes</button>` : ''}${gifBadN() ? `<button class="btn alt sm sfbnew" data-a="gifbad">⚠️ ${gifBadN()} sign GIF${gifBadN() === 1 ? '' : 's'} not loading</button>` : ''}${viewAsHtml()}` : ''}
     <section class="card hero">${myAvatar(myAv(), 'lg', hasFlair(myAv()))}
       <div class="grow"><p class="eyebrow">${S.set.flat ? (myPic() ? esc(S.me.pic.n || 'My picture') : esc(lname(me.letter) || 'Welcome back')) : `Letter ${esc(L.l)}${lname(me.letter) ? ' · ' + esc(lname(me.letter)) : ''}`}</p><h1>Hi, ${first}</h1>${nextLetterHtml()}</div></section>
     ${S.d.teacher ? '' : todayCard()}      <!-- 4.415 Colleen: Daily Review right under Hi, name, then the Summative Stacker -->
@@ -2652,10 +2659,10 @@ function lev(a, b) { let p = []; for (let j = 0; j <= b.length; j++) p[j] = j; f
 const keepAcc = s => String(s).toLowerCase().normalize('NFC').replace(/\([^)]*\)/g, ' ').replace(/[^\p{L}\p{N} ]+/gu, ' ').replace(/\s+/g, ' ').trim();
 /* 1 right · 2 right but misspelled by one letter · 3 right but its accents were left off (fine unless the teacher requires them) · 4 wrong only in its accents (accents required) · 0 wrong */
 function typedOk(card, input) {
-  input = String(input).replace(/['’]/g, '');      /* 4.471 an apostrophe never makes a typed answer wrong: veteran's day = veterans day */
+  input = String(input).replace(/['’]/g, '').replace(/\bok\b/gi, 'okay');      /* 4.471 an apostrophe never makes a typed answer wrong: veteran's day = veterans day */
   const x = normAns(input); if (!x) return 0;
   const bk = bcrKey(card) + '|', partners = S.d && S.d.bcr ? Object.keys(S.d.bcr).filter(k => k.indexOf(bk) === 0).map(k => k.slice(bk.length)) : [];      /* 4.471 her Both Could Be Right pairs count when typed (Colleen: "veteran's day" for MEMORIAL DAY) */
-  const forms = [card.en].concat(splitAns(card.en, true), splitAns(card.alts, true), partners).filter(s => s && String(s).trim()).map(s => String(s).replace(/['’]/g, ''));
+  const forms = [card.en].concat(splitAns(card.en, true), splitAns(card.alts, true), partners).filter(s => s && String(s).trim()).map(s => String(s).replace(/['’]/g, '').replace(/\bok\b/gi, 'okay'));      /* 4.520 (Colleen): ok counts as okay, both ways */
   const acc = new Set(forms.map(normAns).filter(Boolean)), xs = keepAcc(input), exact = new Set(forms.map(keepAcc).filter(Boolean));
   if (exact.has(xs)) return 1;
   const req = accReq(card);
