@@ -320,7 +320,7 @@ body.withside .wrap { margin-right: 240px; }
 // LTHS Testing Center: the server core (tabs, settings, who is signed in, dates, setup, the web page).
 // Other server files: TestingRooms.gs (testing rooms in support classes), Health.gs (health check, archive, weekly backup, Errors tab), TeacherNow.gs (teacher schedules, where is the teacher, the next-period alert), IC.gs (the Infinite Campus import from the IC_Raw_Import tab), Room.gs (the room's numbered desks), Roster.gs (roster import), Booking.gs (seats, appointments, waitlist), Tests.gs (tests, resources,
 // readiness, emails), Dashboard.gs (the coordinator dashboard). Read CHANGES.md first.
-var VERSION = '0.123';
+var VERSION = '0.125';
 var CAMPUSES = ['S', 'N'];          // S = South Campus (grades 9-10), N = North Campus (grades 11-12)
 
 // ---------- the tabs (each one is a table; the header row names the columns; code reads columns by header, not position)
@@ -870,7 +870,12 @@ function api_suggestionSet(id, status, note) {
 }
 function include(f) { return HtmlService.createHtmlOutputFromFile(f).getContent(); }
 var LOGO_URL = 'https:' + '/' + '/colleenelyse.github.io/asl-study-hall/testingcenter/app/icon-64.png';          // 0.112: Colleen's Testing Center app icon on the browser tab (the GitHub copy of the site)
-function appUrl_() { try { return ScriptApp.getService().getUrl() || ''; } catch (e) { return ''; } }
+// 0.125 (Colleen 2026-11-20: a student's email link said "no access"): links in emails always go to the published app, in the school's own
+// address form. Apps Script hands back the test link (/dev, editors only) when the email is made from the test link, and the short form
+// can open with a student's personal Google account.
+var LIVE_URL_ = 'https:\/\/script.google.com/a/macros/d204.lths.net/s/AKfycbxst_R-LWWYH6_lcO9J_lMGRmnw_k96eySqQ7oaR3iWRjt58NSF2lNP5zMe_NWhyRL8/exec';
+function appUrl_() { var u = ''; try { u = ScriptApp.getService().getUrl() || ''; } catch (e) {}
+  return /\/dev(\?|$)/.test(u) || u.indexOf('AKfycbxst_R-LWWYH6') >= 0 || /\/a\/macros\/d204\.lths\.net\//.test(u) ? LIVE_URL_ : u; }
 function ensureSetup_() {          // a sheet that skipped Set up, lost its starting rows, or was made by an older version (new tabs/columns) is repaired on first use
   var dp = PropertiesService.getDocumentProperties();
   if (!rows_('Settings').length || !rows_('Testing Periods').length || !rows_('Bell Schedules').length) { setupSheet(); MEMO_ = {}; }
@@ -3477,7 +3482,9 @@ function attention_(campus) {
   return out.sort(function (a, b) { return a.sev - b.sev; });
 }
 function hmTxt_(hm) { var p = String(hm || '').split(':'), h = +p[0]; return hm ? (h % 12 || 12) + ':' + p[1] + (h < 12 ? ' AM' : ' PM') : ''; }
-function emailCampus_(r) { var id = str_(r.appt).split(',')[0], a = id && find_('Appointments', 'id', id); return a ? str_(a.campus) : (/^materials/.test(str_(r.key)) ? '' : ''); }
+function emailCampus_(r) { var id = str_(r.appt).split(',')[0], a = id && find_('Appointments', 'id', id); if (a) return str_(a.campus);
+  var m = /^s-(testday|later):([^:]+):/.exec(str_(r.key)), sec = m && sectionsById_()[m[2]];          // 0.124 (Colleen): Test day emails (no appointment) go with their class's campus
+  return sec ? (str_(sec.campus).charAt(0).toUpperCase() === 'N' ? 'N' : 'S') : ''; }
 
 function waitlistView_(campus) {
   var t = today_(), by = {};
@@ -5573,7 +5580,7 @@ function tdLaterMail_(w, sec, sid, test, minutes, when, reqId) {
   try {
     var stu = student_(sid); if (!stu || !stu.email) return;
     var tn = str_(w.name) || 'your teacher', room = str_(sec.room), what = test + ' (' + str_(sec.course) + ')';
-    var body = 'Hi ' + str_(stu.alias || stu.first) + ',\n\nYou didn’t get to finish ' + what + ' in class today. Remember to come back to ' + tn + '’s room' + (room ? ' (' + room + ')' : '') + (when ? ' ' + (/^(at|during|in|on|after|before)\b/i.test(when) ? '' : 'at ') + when : ' later today') + ' to finish it' + (minutes ? ' (about ' + parseInt(minutes, 10) + ' minutes left)' : '') + '.\n\nBring your student ID. If you can’t make it, tell ' + tn + (w.email ? ' (' + w.email + ')' : '') + ' before then.\n\n' + tn;
+    var body = 'Hi ' + str_(stu.alias || stu.first) + ',\n\nYou didn’t get to finish ' + what + ' in class today. Remember to come back to ' + tn + '’s room' + (room ? ' (' + room + ')' : '') + (when ? ' ' + (/^(at|during|in|on|after|before)\b/i.test(when) ? '' : 'at ') + when : ' later today') + ' to finish it' + (minutes ? ' (about ' + parseInt(minutes, 10) + ' minutes left)' : '') + '.\n\nIf you can’t make it, tell ' + tn + (w.email ? ' (' + w.email + ')' : '') + ' before then.\n\n' + tn;
     mail_('s-later', 's-later:' + reqId + ':' + sid, low_(stu.email), 'Come back today to finish ' + test, body, '', true, str_(stu.campus));
   } catch (e) { logError_('Test day come-back email', e.message); }
 }
@@ -5629,8 +5636,15 @@ function tdRecent_(w) {          // 0.123: saved test days from the last 14 days
   var from = addDays_(today_(), -14);
   return rows_('Test Days').filter(function (r) { return str_(r.tid) === str_(w.tid) && day_(r.date) >= from && /^saved/i.test(str_(r.status)); })
     .map(function (r) { var sec = sectionsById_()[str_(r.secid)] || {}, res = json_(r.results, []), n = function (k) { return res.filter(function (x) { return x.status === k; }).length; };
-      return { date: day_(r.date), secid: str_(r.secid), course: str_(r.course), period: str_(sec.period), test: str_(r.test), absent: n('absent'), unfinished: n('unfinished') }; })
+      return { date: day_(r.date), secid: str_(r.secid), course: str_(r.course), period: str_(sec.period), test: str_(r.test), absent: n('absent'), unfinished: n('unfinished'), mail: tdMail_(str_(r.secid), day_(r.date)) }; })
     .sort(function (a, b) { return b.date.localeCompare(a.date) || String(a.period).localeCompare(String(b.period), undefined, { numeric: true }); });
+}
+function tdMail_(secid, date) {          // 0.124 (Colleen): the emails a saved test day sent its students, to read on the Test day page
+  var a = 's-testday:' + secid + ':' + date + ':', b = 's-later:' + secid + ':' + date + ':';
+  return rows_('Outbox').filter(function (r) { var k = str_(r.key); return k.indexOf(a) === 0 || k.indexOf(b) === 0; }).map(function (r) {
+    var sid = str_(r.key).split(':')[3], s = student_(sid);
+    return { student: s ? studentName_(s) : str_(r.to), kind: str_(r.kind), subject: str_(r.subject), body: str_(r.body), status: str_(r.status), at: str_(r.sent || r.created), error: str_(r.error) }; })
+    .sort(function (x, y) { return x.student.localeCompare(y.student); });
 }
 function tdDrafts_(w) { return rows_('Test Days').filter(function (r) { return str_(r.tid) === str_(w.tid) && day_(r.date) === today_() && (!/^saved/i.test(str_(r.status)) || /changing/i.test(str_(r.status))); }).map(function (r) { var sec = sectionsById_()[str_(r.secid)] || {}; return { secid: str_(r.secid), course: str_(r.course), period: str_(sec.period), test: str_(r.test) }; }); }
 
@@ -7323,8 +7337,15 @@ function tdRecentHtml(list) {          // 0.123: saved test days (last 14 days) 
   list.forEach(function (x) { var k = x.date + '|' + (x.period || 's:' + x.secid); if (!g[k]) { g[k] = []; keys.push(k); } g[k].push(x); });
   return '<details style="flex-basis:100%"><summary class="small">Change a test day you already saved (' + keys.length + ')</summary><div style="margin-top:6px">' + keys.map(function (k) { var a = g[k], x = a[0], open = a.length > 1 && x.period ? 'p:' + x.period : x.secid;
     var ab = a.reduce(function (n, y) { return n + y.absent; }, 0), un = a.reduce(function (n, y) { return n + y.unfinished; }, 0);
-    return '<div class="slot" style="padding:6px 10px"><div class="grow small"><b>' + esc(niceD(x.date)) + '</b> · ' + (x.period ? 'P' + esc(x.period) + ' ' : '') + esc(a.map(function (y) { return y.course; }).join(' + ')) + ' · ' + esc(x.test || '') + '<span class="mute"> · ' + ab + ' absent, ' + un + ' didn’t finish</span></div><button class="btn sm" onclick="tdayStart(\'' + esc(open) + '\',\'' + esc(x.date) + '\')">Change</button></div>';
+    return '<div class="slot" style="padding:6px 10px"><div class="grow small"><b>' + esc(niceD(x.date)) + '</b> · ' + (x.period ? 'P' + esc(x.period) + ' ' : '') + esc(a.map(function (y) { return y.course; }).join(' + ')) + ' · ' + esc(x.test || '') + '<span class="mute"> · ' + ab + ' absent, ' + un + ' didn’t finish</span></div><button class="btn sm" onclick="tdayStart(\'' + esc(open) + '\',\'' + esc(x.date) + '\')">Change</button></div>' + tdMailHtml([].concat.apply([], a.map(function (y) { return y.mail || []; })));
   }).join('') + '</div></details>';
+}
+function tdMailHtml(m) {          // 0.124 (Colleen): read the emails that test day sent your students
+  if (!m.length) return '<div class="tiny mute" style="margin:0 10px 8px">No emails to students from this day.</div>';
+  return '<details style="margin:0 10px 10px"><summary class="small">📧 Emails your students got (' + m.length + ')</summary>' + m.map(function (e) {
+    var st = /^sent/i.test(e.status) ? '<span class="chip ok">Sent</span>' : /fail/i.test(e.status) ? '<span class="chip bad" title="' + esc(e.error) + '">Not sent</span>' : '<span class="chip warn" title="' + esc(e.error) + '">' + esc(e.status) + '</span>';
+    return '<details style="margin:6px 0 0 12px"><summary class="small"><b>' + esc(e.student) + '</b> · ' + esc(e.subject) + ' ' + st + '</summary><div class="small" style="white-space:pre-wrap;border-left:3px solid #ccc;padding:6px 10px;margin:4px 0">' + esc(e.body) + (e.error && !/^sent/i.test(e.status) ? '\n\n(' + esc(e.error) + ')' : '') + '</div></details>';
+  }).join('') + '</details>';
 }
 function tdConts(list) {
   var byP = {}, out = [];
@@ -9825,7 +9846,7 @@ function coComms() { var V0 = CO.view;
       return '<div class="slot" style="display:block"><div class="row"><div class="grow"><b>' + esc(g.course) + ' · ' + esc(g.test) + '</b> <span class="small mute">' + esc(relD(g.date)) + ' · ' + g.appts.map(function (x) { return esc(x.student); }).join(', ') + '</span><div class="small" style="color:var(--bad)">' + esc(g.appts[0].missing.join(', ')) + '</div><div class="tiny mute">To: ' + (g.to.length ? esc(g.to.join(', ')) : '<b style="color:var(--bad)">no confirmed address</b>' + (g.unresolved.length ? ' (' + esc(g.unresolved.join(', ')) + ')' : '')) + '</div></div>' +
         (g.sent && /sent/i.test(g.sent.status) ? '<span class="chip ok">Sent ' + esc(niceD(g.sent.at.slice(0, 10))) + '</span>' : ed ? '<button class="btn sm" onclick="$(\'pv' + i + '\').hidden=!$(\'pv' + i + '\').hidden">Preview</button><button class="btn sm pri" onclick="coSendMat(\'' + esc(g.key) + '\',' + (g.to.length ? 'false' : 'true') + ')">Send now</button>' : '') + '</div><pre id="pv' + i + '" hidden style="white-space:pre-wrap;font:13px/1.4 inherit;background:#f7f9fc;padding:10px;border-radius:8px">' + esc(g.preview) + '</pre></div>';
     }).join('') : '<div class="empty">Everything coming up has what it needs.</div>') + '</div>';
-    out += '<div class="card"><h2>Email log</h2>' + (c.mail.length ? '<table class="t"><tr><th>When</th><th>Kind</th><th>To</th><th>Subject</th><th>Status</th><th></th></tr>' + c.mail.map(function (m) { return '<tr><td class="small">' + esc(niceD(m.at.slice(0, 10))) + '</td><td class="small">' + esc(m.kind) + '</td><td class="small">' + esc(m.to) + '</td><td class="small">' + esc(m.subject) + '</td><td>' + (/fail/i.test(m.status) ? '<span class="chip bad" title="' + esc(m.error) + '">Failed</span>' : /draft/i.test(m.status) ? '<span class="chip warn">Draft</span>' : statusChip(m.status)) + (m.resolved ? ' <span class="chip ok">resolved</span>' : '') + '</td><td>' + (ed && /^(draft|failed)/i.test(m.status) ? '<button class="btn sm" onclick="coDraft(\'' + m.id + '\',1)">Send</button>' + (/draft/i.test(m.status) ? '<button class="btn sm" onclick="coDraft(\'' + m.id + '\',0)">Skip</button>' : '') : '') + '</td></tr>'; }).join('') + '</table>' : '<div class="empty">No emails yet.</div>') + '</div>';
+    out += '<div class="card"><h2>Email log</h2>' + (c.mail.length ? '<table class="t"><tr><th>When</th><th>Kind</th><th>To</th><th>Subject</th><th>Status</th><th></th></tr>' + c.mail.map(function (m) { return '<tr><td class="small">' + esc(niceD(m.at.slice(0, 10))) + '</td><td class="small">' + esc(({ 's-testday': 'Test day: book a time', 's-later': 'Test day: come back today' })[m.kind] || m.kind) + '</td><td class="small">' + esc(m.to) + '</td><td class="small">' + (m.body ? '<details><summary>' + esc(m.subject) + '</summary><div style="white-space:pre-wrap;border-left:3px solid #ccc;padding:6px 10px;margin:4px 0">' + esc(m.body) + '</div></details>' : esc(m.subject)) + '</td><td>' + (/fail/i.test(m.status) ? '<span class="chip bad" title="' + esc(m.error) + '">Failed</span>' : /draft/i.test(m.status) ? '<span class="chip warn">Draft</span>' : statusChip(m.status)) + (m.resolved ? ' <span class="chip ok">resolved</span>' : '') + '</td><td>' + (ed && /^(draft|failed)/i.test(m.status) ? '<button class="btn sm" onclick="coDraft(\'' + m.id + '\',1)">Send</button>' + (/draft/i.test(m.status) ? '<button class="btn sm" onclick="coDraft(\'' + m.id + '\',0)">Skip</button>' : '') : '') + '</td></tr>'; }).join('') + '</table>' : '<div class="empty">No emails yet.</div>') + '</div>';
     coBodyAt(V0, out);
   }).catch(fail);
   return null;
