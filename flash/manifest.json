@@ -1,0 +1,11 @@
+{
+ "name": "Forehead Flash",
+ "short_name": "Forehead Flash",
+ "start_url": "/flash/",
+ "scope": "/flash/",
+ "display": "fullscreen",
+ "orientation": "landscape",
+ "background_color": "#1B1340",
+ "theme_color": "#1B1340",
+ "icons": [{ "src": "/img/logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }]
+}

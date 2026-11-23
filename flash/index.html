@@ -10,6 +10,7 @@
 <title>Forehead Flash</title>
 <link rel="icon" type="image/png" href="../img/logo-512.png">
 <link rel="apple-touch-icon" href="../img/logo-512.png">
+<link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
 <!-- Forehead Flash (Colleen, 2026-11-23): "the heads up game/app for the phone that works with a tilt like the real game ... i want to be able to build and choose from
      categories that i create". Our own game and look. One student holds the phone on their forehead; the group describes the word in ASL (no voices); tilt DOWN = got it,
@@ -57,7 +58,17 @@ button { font: inherit; cursor: pointer; border: 0; }
 #game { position: fixed; inset: 0; z-index: 10; display: none; color: #fff; background: var(--ink); overflow: hidden; user-select: none; -webkit-user-select: none; }
 #game.on { display: block; }
 #game .stage { position: absolute; inset: 0; display: grid; place-items: center; padding: 6vh 5vw; text-align: center; }
-#word { font: 700 14vw/1.02 Fredoka, sans-serif; max-width: 100%; overflow-wrap: anywhere; text-shadow: 0 .06em 0 rgba(0,0,0,.25); }
+#game .stage { perspective: 900px; }
+/* the card: it leans with the phone as the student tilts, then flips away down (got it) or up (pass), and the next one flips in (Colleen: "uses the tilt of the phone to flip the cards") */
+#word { font: 700 14vw/1.02 Fredoka, sans-serif; max-width: 100%; overflow-wrap: anywhere; text-shadow: 0 .06em 0 rgba(0,0,0,.25); padding: 3vh 4vw; border-radius: 4vh; background: rgba(255,255,255,.14); box-shadow: 0 1.4vh 0 rgba(0,0,0,.18); transform-origin: 50% 50%; transition: transform .07s linear; backface-visibility: hidden; }
+#word.fin { animation: fin .3s cubic-bezier(.2,.9,.3,1.2); }
+#word.outD { animation: outD .22s ease-in forwards; }
+#word.outU { animation: outU .22s ease-in forwards; }
+@keyframes fin { from { transform: rotateX(-95deg) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes outD { to { transform: rotateX(-95deg) translateY(25%); opacity: 0; } }
+@keyframes outU { to { transform: rotateX(95deg) translateY(-25%); opacity: 0; } }
+.homeTip { display: none; margin: 16px 0 0; background: #fff; border-radius: 18px; padding: 12px 14px; gap: 12px; align-items: center; }
+.homeTip.on { display: flex; }
 #msg { font: 700 9vw/1.1 Fredoka, sans-serif; }
 #msg small { display: block; font: 800 3.2vw/1.3 Nunito, sans-serif; opacity: .9; margin-top: 2vh; }
 #clock { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); font: 700 max(8vh, 26px) Fredoka; opacity: .95; z-index: 2; }
@@ -91,6 +102,7 @@ button { font: inherit; cursor: pointer; border: 0; }
   <section id="pick" class="screen on">
     <div class="rule"><span style="font-size:28px" aria-hidden="true">🤫</span><span><b>Voices off!</b> Your group describes the word in ASL: signs, fingerspelling, gestures, facial expressions. No talking, no mouthing the word.</span></div>
     <div id="decks" class="decks" aria-live="polite"><p class="note">Loading decks…</p></div>
+    <div class="homeTip" id="homeTip"><span style="font-size:30px" aria-hidden="true">📲</span><span><b>Best on a phone as an app:</b> <span id="homeHow"></span> It opens full screen, sideways, with nothing in the way.</span></div>
   </section>
 
   <!-- 2. get ready -->
@@ -206,12 +218,12 @@ $('#go').onclick = async () => {
 function msg(t, small) { $('#msg').innerHTML = esc(t) + (small ? '<small>' + esc(small) + '</small>' : ''); $('#msg').style.display = t ? '' : 'none'; }
 function countdown() { if (!R || R.phase !== 'hold') return; R.phase = 'count'; let n = 3; const step = () => { if (!R || R.phase !== 'count') return; if (n) { msg(String(n)); SND.tick(); n--; setTimeout(step, 800); } else { msg(''); SND.go(); R.phase = 'play'; R.end = Date.now() + secs * 1000; next(); } }; step(); }
 function fit() { const w = $('#word'); let s = 14; w.style.fontSize = s + 'vw'; const box = $('#game .stage'); for (let k = 0; k < 30 && (w.scrollWidth > box.clientWidth * .92 || w.scrollHeight > box.clientHeight * .8); k++) { s *= .92; w.style.fontSize = s + 'vw'; } }
-function next() { if (!R) return; R.i++; if (R.i >= R.list.length) { R.list = R.list.concat(bag(R.list)); } const w = R.list[R.i]; $('#word').textContent = w; $('#word').style.display = ''; fit(); R.armed = false; R.shown = Date.now(); }
+function next() { if (!R) return; R.i++; if (R.i >= R.list.length) { R.list = R.list.concat(bag(R.list)); } const w = R.list[R.i]; const el = $('#word'); el.className = ''; el.style.transform = ''; el.textContent = w; el.style.display = ''; fit(); void el.offsetWidth; el.className = 'fin'; R.armed = false; R.shown = Date.now(); }
 function answer(ok) {
   if (!R || R.phase !== 'play' || R.busy) return; R.busy = true; const w = R.list[R.i]; R.log.push([w, ok]); if (ok) R.got.push(w);
-  const g = $('#game'); g.classList.add(ok ? 'good' : 'pass'); $('#word').style.display = 'none'; msg(ok ? 'Got it!' : 'Pass'); ok ? SND.good() : SND.pass(); buzz(ok ? 60 : [30, 40, 30]);
+  const g = $('#game'), el = $('#word'); el.style.transform = ''; el.className = ok ? 'outD' : 'outU'; setTimeout(() => { g.classList.add(ok ? 'good' : 'pass'); el.style.display = 'none'; msg(ok ? 'Got it!' : 'Pass'); }, 200); ok ? SND.good() : SND.pass(); buzz(ok ? 60 : [30, 40, 30]);
   $('#score').textContent = R.got.length;
-  setTimeout(() => { g.classList.remove('good', 'pass'); msg(''); R.busy = false; if (R.phase === 'play') next(); }, 750);
+  setTimeout(() => { g.classList.remove('good', 'pass'); msg(''); R.busy = false; if (R.phase === 'play') next(); }, 850);
 }
 function loop() {
   if (!R) return;
@@ -219,6 +231,7 @@ function loop() {
   $('#turn').classList.toggle('on', R.tilt && !side && R.phase !== 'over');
   if (R.tilt && up !== null) {
     if (R.phase === 'hold') { if (side && Math.abs(up) < .4) { R.still = R.still || now; if (now - R.still > 700) countdown(); } else R.still = 0; }
+    if (R.phase === 'play' && !R.busy && R.armed && now - R.shown > 300) $('#word').style.transform = 'rotateX(' + Math.max(-40, Math.min(40, up * 40)).toFixed(1) + 'deg)';      /* the card leans with the phone */
     if (R.phase === 'play' && !R.busy) { if (!R.armed) { if (Math.abs(up) < .32 && now - R.shown > 250) R.armed = true; } else if (up < -.55) answer(true); else if (up > .55) answer(false); }
   }
   if (R.phase === 'play') {
@@ -247,6 +260,9 @@ $('#tGot').onclick = () => answer(true); $('#tPass').onclick = () => answer(fals
 document.addEventListener('keydown', e => { if (!R) return; if (R.phase === 'hold' && (e.key === 'Enter' || e.key === ' ')) countdown(); if (e.key === 'ArrowDown') answer(true); if (e.key === 'ArrowUp') answer(false); });
 document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && R && navigator.wakeLock) try { wake = await navigator.wakeLock.request('screen'); } catch (e) {} });
 loadDecks();
+/* phones: suggest adding it to the Home Screen, where it opens full screen (an iPhone can't go full screen in Safari) */
+try { const standalone = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone, ios = /iPhone|iPad|iPod/.test(navigator.userAgent), phone = ios || /Android/.test(navigator.userAgent);
+  if (phone && !standalone) { $('#homeHow').innerHTML = ios ? 'tap <b>Share</b> <span aria-hidden="true">⬆️</span>, then <b>Add to Home Screen</b>.' : 'tap <b>⋮</b>, then <b>Add to Home screen</b> (or <b>Install app</b>).'; $('#homeTip').classList.add('on'); } } catch (e) {}
 })();
 </script>
 </body>
