@@ -61,10 +61,19 @@ button { font: inherit; cursor: pointer; border: 0; }
 #game .stage { position: absolute; inset: 0; display: grid; place-items: center; padding: 6vh 5vw; text-align: center; }
 #game .stage { perspective: 900px; }
 /* the card: it leans with the phone as the student tilts, then flips away down (got it) or up (pass), and the next one flips in (Colleen: "uses the tilt of the phone to flip the cards") */
-#word { font: 700 14vw/1.02 Fredoka, sans-serif; max-width: 100%; overflow-wrap: anywhere; text-shadow: 0 .06em 0 rgba(0,0,0,.25); padding: 3vh 4vw; border-radius: 4vh; background: rgba(255,255,255,.14); box-shadow: 0 1.4vh 0 rgba(0,0,0,.18); transform-origin: 50% 50%; transition: transform .07s linear; backface-visibility: hidden; }
+#word { display: flex; align-items: stretch; gap: 3vw; width: 92vw; height: 76vh; text-shadow: 0 .06em 0 rgba(0,0,0,.25); padding: 3vh; border-radius: 4vh; background: rgba(255,255,255,.14); box-shadow: 0 1.4vh 0 rgba(0,0,0,.18); transform-origin: 50% 50%; transition: transform .07s linear; backface-visibility: hidden; }
 /* a picture of the person or character, for the group (Colleen: "an image on each ... as realistic as possible": real photos and portraits from Wikipedia) */
-#word img { display: block; margin: 0 auto 1.6vh; height: 36vh; max-width: 56vw; object-fit: cover; object-position: 50% 20%; border-radius: 2.6vh; background: #fff; box-shadow: 0 1vh 0 rgba(0,0,0,.2); }
-#word.hasPic { font-size: 9vw; }
+/* every card the same (Colleen: "image on the left and the text on the right. the text should be the priority for space use") */
+#word .pic { flex: 0 0 28%; border-radius: 2.6vh; background: rgba(255,255,255,.18) 50% 20% / cover no-repeat; box-shadow: 0 1vh 0 rgba(0,0,0,.2); display: grid; place-items: center; font-size: 16vh; }
+#word .pic.has { background-color: #fff; }
+#word .txt { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; text-align: center; font: 700 12vw/1.04 Fredoka, sans-serif; overflow: hidden; }
+#word .txt span { display: block; max-width: 100%; overflow-wrap: normal; word-break: normal; hyphens: none; }
+/* picture only (Colleen: "a picture only mode to challenge students without words") */
+#word.only { width: min(92vw, 66vh); }
+#game.taps #word { height: 62vh; margin-bottom: 12vh; }      /* laptops: room for the Pass / Got it buttons */
+#game.taps #word.only { width: min(92vw, 54vh); }
+#word.only .pic { flex: 1; }
+#word.only .txt { display: none; }
 #credit { position: absolute; left: max(12px, env(safe-area-inset-left)); bottom: 2.4vh; font: 800 1.6vh Nunito, sans-serif; opacity: .7; z-index: 2; }
 .res li img { width: 44px; height: 44px; object-fit: cover; object-position: 50% 20%; border-radius: 10px; flex: none; background: #fff; }
 #word.fin { animation: fin .3s cubic-bezier(.2,.9,.3,1.2); }
@@ -134,6 +143,9 @@ button { font: inherit; cursor: pointer; border: 0; }
         <div class="row" id="perTeam"><button class="chip on" data-per="1">1 turn</button><button class="chip" data-per="2">2 turns</button><button class="chip" data-per="3">3 turns</button></div>
         <p class="note" style="margin:8px 0 0">Each turn, the team picks a new person to hold the phone. The rest of the team describes in ASL.</p>
       </div>
+      <p style="margin:12px 0 6px">What’s on the card?</p>
+      <div class="row" id="shows"><button class="chip on" data-show="both">🖼️ Picture and name</button><button class="chip" data-show="pic">🖼️ Picture only (harder)</button></div>
+      <p class="note" id="showNote" style="margin:6px 0 0"></p>
       <p style="margin:12px 0 6px">How long is a round?</p>
       <div class="row" id="times"><button class="chip" data-t="60">1 minute</button><button class="chip on" data-t="90">1½ minutes</button><button class="chip" data-t="120">2 minutes</button></div>
       <ol class="steps">
@@ -200,7 +212,7 @@ let DECKS = [], deck = null, secs = +(get('ff-secs') || 90);
 /* teams (Colleen 2026-11-23: "add a teams scoreboard so groups can take turns"). T is saved on this phone, so a closed tab doesn't lose the scores. */
 const TCOL = [['🔴', 'Red Team', '#E53935'], ['🔵', 'Blue Team', '#1E63E9'], ['🟢', 'Green Team', '#14A35B'], ['🟣', 'Purple Team', '#7C3AED'], ['🟠', 'Orange Team', '#F26B0F'], ['🟡', 'Gold Team', '#C99700']];
 const readJ = (k, d) => { try { return JSON.parse(get(k) || 'null') || d; } catch (e) { return d; } };
-let mode = 'solo', nT = 2, per = 1, R_TEAM = -1, names = readJ('ff-names', []), T = readJ('ff-teams', null);
+let cardShow = get('ff-show') === 'pic' ? 'pic' : 'both', mode = 'solo', nT = 2, per = 1, R_TEAM = -1, names = readJ('ff-names', []), T = readJ('ff-teams', null);
 const saveT = () => put('ff-teams', JSON.stringify(T));
 function paintNames() { $('#tNames').innerHTML = TCOL.slice(0, nT).map((c, i) => `<label><span aria-hidden="true">${c[0]}</span><input class="tname" data-tn="${i}" value="${esc(names[i] || c[1])}" aria-label="Team ${i + 1} name" maxlength="24"></label>`).join(''); }
 function boardHtml(cur) { const rows = T.teams.map((t, i) => ({ t, i })).sort((a, b) => b.t.score - a.t.score);
@@ -230,17 +242,22 @@ function paintDecks() {
 document.addEventListener('click', e => {
   const d = e.target.closest('.deck'); if (d) { const i = d.dataset.i; deck = i === 'mix' ? { id: 'mix', name: 'Mix them all', emoji: '🔀', color: '#5B3FD6', words: [].concat(...DECKS.map(x => x.words)), imgs: Object.assign({}, ...DECKS.map(x => x.imgs || {})) } : DECKS[+i]; openReady(); return; }
   const g = e.target.closest('[data-go]'); if (g) show(g.dataset.go);
+  const sh = e.target.closest('[data-show]'); if (sh && !sh.disabled) { cardShow = sh.dataset.show; put('ff-show', cardShow); paintShow(); }
   const md = e.target.closest('[data-mode]'); if (md) { mode = md.dataset.mode; put('ff-mode', mode); paintMode(); }
   const nt = e.target.closest('[data-nt]'); if (nt) { nT = +nt.dataset.nt; $$('#nTeams .chip').forEach(c => c.classList.toggle('on', c === nt)); paintNames(); }
   const pr = e.target.closest('[data-per]'); if (pr) { per = +pr.dataset.per; $$('#perTeam .chip').forEach(c => c.classList.toggle('on', c === pr)); }
   const t = e.target.closest('[data-t]'); if (t) { secs = +t.dataset.t; put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c === t)); }
 });
 document.addEventListener('input', e => { if (e.target.dataset && e.target.dataset.tn !== undefined) { names[+e.target.dataset.tn] = e.target.value; put('ff-names', JSON.stringify(names)); } });
+const picCount = () => deck.words.filter(w => picOf(w)).length;
+function paintShow() { const n = picCount(), b = document.querySelector('[data-show="pic"]'); b.disabled = n < 5; b.style.opacity = n < 5 ? .45 : 1; if (n < 5 && cardShow === 'pic') cardShow = 'both';
+  $$('#shows .chip').forEach(c => c.classList.toggle('on', c.dataset.show === cardShow));
+  $('#showNote').textContent = n < 5 ? 'Picture only needs at least 5 cards with pictures (this deck has ' + n + ').' : cardShow === 'pic' ? 'Only the ' + n + ' cards with a picture are used. The names show at the end.' : ''; }
 function paintMode() { $$('#modes .chip').forEach(c => c.classList.toggle('on', c.dataset.mode === mode)); $('#teamSet').hidden = mode !== 'teams'; $('#go').textContent = mode === 'teams' ? '▶ Start the game' : '▶ Start'; if (mode === 'teams') paintNames(); }
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); window.scrollTo(0, 0); }
 function openReady() {
   $('#rdName').textContent = (deck.emoji || '') + ' ' + deck.name; $('#rdCount').textContent = deck.words.length + ' cards';
-  $$('#times .chip').forEach(c => c.classList.toggle('on', +c.dataset.t === secs)); mode = get('ff-mode') === 'teams' ? 'teams' : 'solo'; paintMode();
+  $$('#times .chip').forEach(c => c.classList.toggle('on', +c.dataset.t === secs)); mode = get('ff-mode') === 'teams' ? 'teams' : 'solo'; paintMode(); paintShow();
   $('#resume').hidden = !(T && !T.over && T.deckId === deck.id && T.turn > 0 && T.turn < T.teams.length * T.per);      /* a team game this phone didn't finish */
   show('ready');
 }
@@ -276,13 +293,13 @@ $('#ttEnd').onclick = () => showFinal();
 $('#fnNew').onclick = () => { T.teams.forEach(t => { t.score = 0; t.rounds = []; }); T.turn = 0; T.over = false; T.deckId = deck.id; saveT(); showTurn(); };
 async function startRound() {
   try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) {}
-  const words = deck.words.map(w => String(w).trim()).filter(Boolean);
+  const only = cardShow === 'pic' && picCount() >= 5, words = deck.words.map(w => String(w).trim()).filter(w => w && (!only || picOf(w)));
   const hasTilt = await askTilt();
-  R = { list: bag(words), i: -1, got: [], log: [], left: secs, tilt: hasTilt, armed: false, phase: 'hold', busy: false };
+  R = { only, list: bag(words), i: -1, got: [], log: [], left: secs, tilt: hasTilt, armed: false, phase: 'hold', busy: false };
   try { const el = document.documentElement; if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' }); } catch (e) {}
   try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch (e) {}
   try { if (navigator.wakeLock) wake = await navigator.wakeLock.request('screen'); } catch (e) {}
-  const g = $('#game'); g.className = 'on'; g.style.background = deck.color || '#1B1340';
+  const g = $('#game'); g.className = hasTilt ? 'on' : 'on taps'; g.style.background = deck.color || '#1B1340';
   $('#taps').classList.toggle('on', !hasTilt); $('#word').textContent = ''; $('#clock').textContent = ''; $('#score').textContent = ''; $('#bar').style.transform = 'scaleX(1)';
   msg(hasTilt ? 'Put it on your forehead!' : 'Ready?', hasTilt ? 'Screen facing your group. Hold still…' : 'No tilt on this device: tap the buttons, or use the ↑ ↓ arrow keys.');
   if (!hasTilt) setTimeout(countdown, 1600);
@@ -290,9 +307,9 @@ async function startRound() {
 };
 function msg(t, small) { $('#msg').innerHTML = esc(t) + (small ? '<small>' + esc(small) + '</small>' : ''); $('#msg').style.display = t ? '' : 'none'; }
 function countdown() { if (!R || R.phase !== 'hold') return; R.phase = 'count'; let n = 3; const step = () => { if (!R || R.phase !== 'count') return; if (n) { msg(String(n)); SND.tick(); n--; setTimeout(step, 800); } else { msg(''); SND.go(); R.phase = 'play'; R.end = Date.now() + secs * 1000; next(); } }; step(); }
-function fit() { const w = $('#word'); let s = w.classList.contains('hasPic') ? 9 : 14; w.style.fontSize = s + 'vw'; const box = $('#game .stage'); for (let k = 0; k < 30 && (w.scrollWidth > box.clientWidth * .92 || w.scrollHeight > box.clientHeight * .8); k++) { s *= .92; w.style.fontSize = s + 'vw'; } }
+function fit() { const t = $('#word .txt'), sp = t && t.firstChild; if (!sp || $('#word').classList.contains('only')) return; let s = 12; t.style.fontSize = s + 'vw'; for (let k = 0; k < 40 && (sp.scrollWidth > t.clientWidth || sp.offsetHeight > t.clientHeight); k++) { s *= .93; t.style.fontSize = s + 'vw'; } }      /* the name as big as it fits, never broken mid-word */
 const picOf = w => { const m = deck && deck.imgs; const u = m && m[w]; return typeof u === 'string' && /^https:/.test(u) ? u : ''; };
-function next() { if (!R) return; R.i++; if (R.i >= R.list.length) { R.list = R.list.concat(bag(R.list)); } const w = R.list[R.i]; const el = $('#word'), pic = picOf(w); el.className = pic ? 'hasPic' : ''; el.style.transform = ''; el.innerHTML = (pic ? `<img src="${esc(pic)}" alt="">` : '') + `<span>${esc(w)}</span>`; $('#credit').textContent = pic ? 'Picture: Wikipedia' : ''; el.style.display = ''; fit(); void el.offsetWidth; el.classList.add('fin');
+function next() { if (!R) return; R.i++; if (R.i >= R.list.length) { R.list = R.list.concat(bag(R.list)); } const w = R.list[R.i]; const el = $('#word'), pic = picOf(w); el.className = R.only ? 'only' : ''; el.style.transform = ''; el.innerHTML = `<div class="pic${pic ? ' has' : ''}"${pic ? ` style="background-image:url('${esc(pic)}')"` : ''}>${pic ? '' : esc(deck.emoji || '🃏')}</div><div class="txt"><span>${esc(w)}</span></div>`; $('#credit').textContent = pic ? 'Picture: Wikipedia' : ''; el.style.display = ''; fit(); void el.offsetWidth; el.classList.add('fin');
   const nx = R.list[R.i + 1], np = nx && picOf(nx); if (np) { const im = new Image(); im.src = np; } R.armed = false; R.shown = Date.now(); }
 function answer(ok) {
   if (!R || R.phase !== 'play' || R.busy) return; R.busy = true; const w = R.list[R.i]; R.log.push([w, ok]); if (ok) R.got.push(w);
