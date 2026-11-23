@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1B1340">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Forehead Flash">
+<title>Forehead Flash</title>
+<link rel="icon" type="image/png" href="../img/logo-512.png">
+<link rel="apple-touch-icon" href="../img/logo-512.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
+<!-- Forehead Flash (Colleen, 2026-11-23): "the heads up game/app for the phone that works with a tilt like the real game ... i want to be able to build and choose from
+     categories that i create". Our own game and look. One student holds the phone on their forehead; the group describes the word in ASL (no voices); tilt DOWN = got it,
+     tilt UP = pass. Decks come from /flash/decks.json (the ones she makes in her editor), or starter.json until she saves her own. Nothing about students is saved anywhere. -->
+<style>
+:root { --ink: #1B1340; --cream: #FFF8EC; --card: #FFFFFF; --muted: #6B6390; --good: #19B36B; --pass: #FF8A1F; --sun: #FFC93C; color-scheme: light; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--cream); color: var(--ink); font: 700 17px/1.4 Nunito, system-ui, sans-serif; overscroll-behavior: none; }
+h1, h2, .big { font-family: Fredoka, Nunito, system-ui, sans-serif; }
+button { font: inherit; cursor: pointer; border: 0; }
+.wrap { max-width: 980px; margin: 0 auto; padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.top { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
+.logo { width: 54px; height: 54px; border-radius: 16px; background: var(--ink); display: grid; place-items: center; font-size: 30px; transform: rotate(-6deg); box-shadow: 0 4px 0 #0d0926; }
+.top h1 { margin: 0; font-size: clamp(28px, 6vw, 42px); letter-spacing: .5px; line-height: 1; }
+.top h1 span { color: #E91E63; }
+.sub { margin: 2px 0 0; color: var(--muted); font-weight: 700; font-size: 15px; }
+.rule { background: var(--ink); color: #fff; border-radius: 18px; padding: 12px 16px; display: flex; gap: 12px; align-items: center; margin: 0 0 16px; }
+.rule b { color: var(--sun); }
+.decks { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.deck { position: relative; text-align: left; color: #fff; border-radius: 22px; padding: 16px 16px 14px; min-height: 150px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 6px 0 rgba(0,0,0,.22); transition: transform .12s; overflow: hidden; }
+.deck:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(0,0,0,.22); }
+.deck .em { font-size: 44px; line-height: 1; }
+.deck b { font: 600 22px/1.15 Fredoka, sans-serif; }
+.deck small { opacity: .85; font-weight: 800; }
+.deck::after { content: ''; position: absolute; right: -30px; top: -30px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.12); }
+.screen { display: none; }
+.screen.on { display: block; }
+.panel { background: var(--card); border-radius: 22px; padding: 18px; box-shadow: 0 4px 0 rgba(27,19,64,.08); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.chip { background: #EFE9FF; color: var(--ink); border-radius: 999px; padding: 10px 18px; font-weight: 800; }
+.chip.on { background: var(--ink); color: #fff; }
+.btn { background: var(--sun); color: var(--ink); border-radius: 16px; padding: 14px 22px; font: 600 20px Fredoka, sans-serif; box-shadow: 0 5px 0 #d79e12; }
+.btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #d79e12; }
+.btn.alt { background: #EFE9FF; box-shadow: 0 5px 0 #cfc4f2; }
+.btn.wide { width: 100%; }
+.steps { margin: 12px 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.steps li { display: flex; gap: 12px; align-items: center; background: #F7F3FF; border-radius: 14px; padding: 10px 12px; }
+.steps .n { font: 700 26px Fredoka; width: 38px; text-align: center; }
+.tilt { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 14px; }
+.tilt div { border-radius: 16px; padding: 12px; color: #fff; text-align: center; font-weight: 800; }
+.note { color: var(--muted); font-size: 14px; }
+.back { background: none; color: var(--muted); font-weight: 800; padding: 6px 0; }
+/* the game: full screen, one strong color, words big enough to read across a group */
+#game { position: fixed; inset: 0; z-index: 10; display: none; color: #fff; background: var(--ink); overflow: hidden; user-select: none; -webkit-user-select: none; }
+#game.on { display: block; }
+#game .stage { position: absolute; inset: 0; display: grid; place-items: center; padding: 6vh 5vw; text-align: center; }
+#word { font: 700 14vw/1.02 Fredoka, sans-serif; max-width: 100%; overflow-wrap: anywhere; text-shadow: 0 .06em 0 rgba(0,0,0,.25); }
+#msg { font: 700 9vw/1.1 Fredoka, sans-serif; }
+#msg small { display: block; font: 800 3.2vw/1.3 Nunito, sans-serif; opacity: .9; margin-top: 2vh; }
+#clock { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); font: 700 max(8vh, 26px) Fredoka; opacity: .95; z-index: 2; }
+#clock.low { color: var(--sun); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { transform: translateX(-50%) scale(1.15); } }
+#bar { position: absolute; left: 0; bottom: 0; height: 1.6vh; background: rgba(255,255,255,.55); width: 100%; transform-origin: left; }
+#score { z-index: 2; position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); font: 700 5vh Fredoka; }
+#quit { z-index: 3; position: absolute; top: max(8px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); background: rgba(0,0,0,.25); color: #fff; border-radius: 12px; padding: 6px 12px; font-weight: 800; font-size: 14px; }
+#game.good { background: var(--good) !important; }
+#game.pass { background: var(--pass) !important; }
+#taps { z-index: 3; position: absolute; left: 0; right: 0; bottom: 3vh; display: none; justify-content: center; gap: 4vw; }
+#taps.on { display: flex; }
+#taps button { color: #fff; border-radius: 18px; padding: 2.2vh 5vw; font: 700 4vh Fredoka; border: 3px solid rgba(255,255,255,.6); background: rgba(0,0,0,.18); }
+#turn { position: fixed; inset: 0; z-index: 20; background: var(--ink); color: #fff; display: none; place-items: center; text-align: center; padding: 24px; font: 700 26px Fredoka; }
+#turn.on { display: grid; }
+#turn .ph { font-size: 70px; display: block; animation: rot 1.6s ease-in-out infinite; }
+@keyframes rot { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+.res { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 12px 0 16px; padding: 0; list-style: none; }
+.res li { border-radius: 12px; padding: 10px 12px; font-weight: 800; display: flex; gap: 8px; align-items: center; }
+.res li.ok { background: #DDF7EA; color: #0b6b3e; }
+.res li.no { background: #F1EEF7; color: #6B6390; }
+.bigscore { font: 700 64px/1 Fredoka; }
+@media (max-width: 520px) { .deck { min-height: 120px; } .deck .em { font-size: 36px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><div class="logo" aria-hidden="true">🤟</div><div><h1>Forehead <span>Flash</span></h1><p class="sub">Phone on your forehead. Friends describe it in ASL. Tilt to answer.</p></div></header>
+
+  <!-- 1. pick a deck -->
+  <section id="pick" class="screen on">
+    <div class="rule"><span style="font-size:28px" aria-hidden="true">🤫</span><span><b>Voices off!</b> Your group describes the word in ASL: signs, fingerspelling, gestures, facial expressions. No talking, no mouthing the word.</span></div>
+    <div id="decks" class="decks" aria-live="polite"><p class="note">Loading decks…</p></div>
+  </section>
+
+  <!-- 2. get ready -->
+  <section id="ready" class="screen">
+    <button class="back" data-go="pick">‹ All decks</button>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h2 id="rdName" style="margin:0;font-size:28px"></h2><span id="rdCount" class="note"></span></div>
+      <p style="margin:12px 0 6px">How long is a round?</p>
+      <div class="row" id="times"><button class="chip" data-t="60">1 minute</button><button class="chip on" data-t="90">1½ minutes</button><button class="chip" data-t="120">2 minutes</button></div>
+      <ol class="steps">
+        <li><span class="n">1</span><span>Turn your phone <b>sideways</b> and hold it on your forehead, screen facing your group.</span></li>
+        <li><span class="n">2</span><span>Your group describes the word <b>in ASL only</b>. You guess out loud or in ASL.</span></li>
+        <li><span class="n">3</span><span>Tilt to answer:</span></li>
+      </ol>
+      <div class="tilt"><div style="background:var(--good)">⬇️ Tilt DOWN<br>Got it!</div><div style="background:var(--pass)">⬆️ Tilt UP<br>Pass</div></div>
+      <button class="btn wide" id="go">▶ Start</button>
+      <p class="note" id="tiltNote" style="margin:10px 0 0">Your phone may ask to use motion. Tap <b>Allow</b> so the tilt works.</p>
+    </div>
+  </section>
+
+  <!-- 4. results -->
+  <section id="done" class="screen">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between;align-items:flex-end"><div><p class="note" style="margin:0" id="dnDeck"></p><div class="bigscore" id="dnScore"></div></div><span style="font-size:56px" aria-hidden="true" id="dnEm">🎉</span></div>
+      <p style="margin:10px 0 0">Go over the ones you passed: how would <b>you</b> describe them in ASL?</p>
+      <ul class="res" id="dnList"></ul>
+      <div class="row"><button class="btn" id="again">↻ Play again</button><button class="btn alt" data-go="pick">Pick a deck</button></div>
+    </div>
+  </section>
+</div>
+
+<!-- 3. the game -->
+<div id="game" role="application" aria-label="Forehead Flash round">
+  <button id="quit">✕ End</button>
+  <div id="clock"></div><div id="score"></div>
+  <div class="stage"><div id="word"></div><div id="msg"></div></div>
+  <div id="taps"><button id="tPass">⬆ Pass</button><button id="tGot">Got it ⬇</button></div>
+  <div id="bar"></div>
+</div>
+<div id="turn"><div><span class="ph" aria-hidden="true">📱</span>Turn your phone sideways<br><small style="font:800 16px Nunito;opacity:.85">(If it doesn’t turn, switch off rotation lock.)</small></div></div>
+
+<script>
+(function () {
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const COLORS = ['#3D5AFE', '#E91E63', '#00A884', '#7C4DFF', '#FF6D00', '#0091EA', '#C51162', '#2E7D32'];
+const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let DECKS = [], deck = null, secs = +(get('ff-secs') || 90);
+
+/* ---------- decks: hers from asl.cool, else the starters ---------- */
+async function loadDecks() {
+  let list = null;
+  try { const r = await fetch('decks.json', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (j && Array.isArray(j.decks) && j.decks.length) list = j.decks; } } catch (e) {}
+  if (!list) try { list = (await (await fetch('starter.json')).json()).decks; } catch (e) { list = []; }
+  DECKS = list.filter(d => d && d.on !== false && Array.isArray(d.words) && d.words.filter(w => String(w).trim()).length);
+  paintDecks();
+}
+function paintDecks() {
+  const box = $('#decks');
+  if (!DECKS.length) { box.innerHTML = '<p class="note">No decks yet.</p>'; return; }
+  box.innerHTML = DECKS.map((d, i) => `<button class="deck" data-i="${i}" style="background:${esc(/^#[0-9a-f]{6}$/i.test(d.color || '') ? d.color : COLORS[i % COLORS.length])}"><span class="em">${esc(d.emoji || '🃏')}</span><span><b>${esc(d.name || 'Deck')}</b><br><small>${d.words.length} cards</small></span></button>`).join('')
+    + (DECKS.length > 1 ? `<button class="deck" data-i="mix" style="background:linear-gradient(135deg,#1B1340,#7C4DFF)"><span class="em">🔀</span><span><b>Mix them all</b><br><small>${DECKS.reduce((a, d) => a + d.words.length, 0)} cards</small></span></button>` : '');
+}
+document.addEventListener('click', e => {
+  const d = e.target.closest('.deck'); if (d) { const i = d.dataset.i; deck = i === 'mix' ? { id: 'mix', name: 'Mix them all', emoji: '🔀', color: '#5B3FD6', words: [].concat(...DECKS.map(x => x.words)) } : DECKS[+i]; openReady(); return; }
+  const g = e.target.closest('[data-go]'); if (g) show(g.dataset.go);
+  const t = e.target.closest('[data-t]'); if (t) { secs = +t.dataset.t; put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c === t)); }
+});
+function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); window.scrollTo(0, 0); }
+function openReady() {
+  $('#rdName').textContent = (deck.emoji || '') + ' ' + deck.name; $('#rdCount').textContent = deck.words.length + ' cards';
+  $$('#times .chip').forEach(c => c.classList.toggle('on', +c.dataset.t === secs)); show('ready');
+}
+
+/* ---------- the tilt ----------
+   up = how much the screen faces the ceiling: +1 face up, -1 face down, 0 upright. It is the screen's own direction worked out from
+   deviceorientation (beta, gamma), so it is the same held tall or sideways, on iPhone and Android. */
+const D = Math.PI / 180; let up = null, tiltOK = false, lastTilt = 0;
+function onTilt(e) { if (e.beta === null || e.beta === undefined) return; up = Math.cos(e.beta * D) * Math.cos((e.gamma || 0) * D); lastTilt = Date.now(); tiltOK = true; }
+async function askTilt() {
+  try { if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') { const r = await DeviceOrientationEvent.requestPermission(); if (r !== 'granted') return false; } } catch (e) { return false; }
+  window.addEventListener('deviceorientation', onTilt);
+  await new Promise(r => setTimeout(r, 450)); return tiltOK;
+}
+
+/* ---------- sounds (made here, no files) ---------- */
+let AC = null;
+function tone(f, t0, d, type, vol) { if (!AC) return; const o = AC.createOscillator(), g = AC.createGain(); o.type = type || 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, AC.currentTime + t0); g.gain.linearRampToValueAtTime(vol || .25, AC.currentTime + t0 + .01); g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + t0 + d); o.connect(g); g.connect(AC.destination); o.start(AC.currentTime + t0); o.stop(AC.currentTime + t0 + d + .05); }
+const SND = { good: () => { tone(660, 0, .12, 'triangle'); tone(990, .1, .22, 'triangle'); }, pass: () => tone(220, 0, .25, 'sawtooth', .12), tick: () => tone(1200, 0, .05, 'square', .06), go: () => tone(880, 0, .3, 'triangle'), end: () => { tone(392, 0, .25, 'triangle'); tone(330, .22, .25, 'triangle'); tone(262, .44, .5, 'triangle'); } };
+const buzz = n => { try { navigator.vibrate && navigator.vibrate(n); } catch (e) {} };
+
+/* ---------- a round ---------- */
+let R = null, wake = null;
+function bag(words) {      // shuffled, the cards this phone saw least recently first
+  const k = 'ff-seen:' + deck.id, seen = JSON.parse(get(k) || '[]'), s = new Set(seen), fresh = words.filter(w => !s.has(w)), old = seen.filter(w => words.includes(w));
+  const mix = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  return mix(fresh).concat(old);
+}
+$('#go').onclick = async () => {
+  try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) {}
+  const words = deck.words.map(w => String(w).trim()).filter(Boolean);
+  const hasTilt = await askTilt();
+  R = { list: bag(words), i: -1, got: [], log: [], left: secs, tilt: hasTilt, armed: false, phase: 'hold', busy: false };
+  try { const el = document.documentElement; if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' }); } catch (e) {}
+  try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch (e) {}
+  try { if (navigator.wakeLock) wake = await navigator.wakeLock.request('screen'); } catch (e) {}
+  const g = $('#game'); g.className = 'on'; g.style.background = deck.color || '#1B1340';
+  $('#taps').classList.toggle('on', !hasTilt); $('#word').textContent = ''; $('#clock').textContent = ''; $('#score').textContent = ''; $('#bar').style.transform = 'scaleX(1)';
+  msg(hasTilt ? 'Put it on your forehead!' : 'Ready?', hasTilt ? 'Screen facing your group. Hold still…' : 'No tilt on this device: tap the buttons, or use the ↑ ↓ arrow keys.');
+  if (!hasTilt) setTimeout(countdown, 1600);
+  clearInterval(R.tk); R.tk = setInterval(loop, 40);      /* a timer, not requestAnimationFrame: it keeps checking the tilt even when the phone skips redraws */
+};
+function msg(t, small) { $('#msg').innerHTML = esc(t) + (small ? '<small>' + esc(small) + '</small>' : ''); $('#msg').style.display = t ? '' : 'none'; }
+function countdown() { if (!R || R.phase !== 'hold') return; R.phase = 'count'; let n = 3; const step = () => { if (!R || R.phase !== 'count') return; if (n) { msg(String(n)); SND.tick(); n--; setTimeout(step, 800); } else { msg(''); SND.go(); R.phase = 'play'; R.end = Date.now() + secs * 1000; next(); } }; step(); }
+function fit() { const w = $('#word'); let s = 14; w.style.fontSize = s + 'vw'; const box = $('#game .stage'); for (let k = 0; k < 30 && (w.scrollWidth > box.clientWidth * .92 || w.scrollHeight > box.clientHeight * .8); k++) { s *= .92; w.style.fontSize = s + 'vw'; } }
+function next() { if (!R) return; R.i++; if (R.i >= R.list.length) { R.list = R.list.concat(bag(R.list)); } const w = R.list[R.i]; $('#word').textContent = w; $('#word').style.display = ''; fit(); R.armed = false; R.shown = Date.now(); }
+function answer(ok) {
+  if (!R || R.phase !== 'play' || R.busy) return; R.busy = true; const w = R.list[R.i]; R.log.push([w, ok]); if (ok) R.got.push(w);
+  const g = $('#game'); g.classList.add(ok ? 'good' : 'pass'); $('#word').style.display = 'none'; msg(ok ? 'Got it!' : 'Pass'); ok ? SND.good() : SND.pass(); buzz(ok ? 60 : [30, 40, 30]);
+  $('#score').textContent = R.got.length;
+  setTimeout(() => { g.classList.remove('good', 'pass'); msg(''); R.busy = false; if (R.phase === 'play') next(); }, 750);
+}
+function loop() {
+  if (!R) return;
+  const now = Date.now(), side = innerWidth >= innerHeight;
+  $('#turn').classList.toggle('on', R.tilt && !side && R.phase !== 'over');
+  if (R.tilt && up !== null) {
+    if (R.phase === 'hold') { if (side && Math.abs(up) < .4) { R.still = R.still || now; if (now - R.still > 700) countdown(); } else R.still = 0; }
+    if (R.phase === 'play' && !R.busy) { if (!R.armed) { if (Math.abs(up) < .32 && now - R.shown > 250) R.armed = true; } else if (up < -.55) answer(true); else if (up > .55) answer(false); }
+  }
+  if (R.phase === 'play') {
+    const left = Math.max(0, Math.ceil((R.end - now) / 1000)); if (left !== R.left) { R.left = left; if (left <= 5 && left > 0) SND.tick(); }
+    $('#clock').textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); $('#clock').classList.toggle('low', left <= 10);
+    $('#bar').style.transform = 'scaleX(' + Math.max(0, (R.end - now) / (secs * 1000)) + ')';
+    if (now >= R.end && !R.busy) return over();
+  }
+}
+function over() {
+  clearInterval(R.tk); R.phase = 'over'; SND.end(); buzz([200, 80, 200]); $('#word').style.display = 'none'; msg("Time's up!", R.got.length + (R.got.length === 1 ? ' word' : ' words'));
+  const k = 'ff-seen:' + deck.id, seen = JSON.parse(get(k) || '[]').filter(w => !R.log.some(x => x[0] === w)); put(k, JSON.stringify(seen.concat(R.log.map(x => x[0])).slice(-400)));
+  setTimeout(finish, 1800);
+}
+function finish() {
+  const g = $('#game'); g.className = ''; $('#turn').classList.remove('on');
+  try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {} try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) {} try { wake && wake.release(); } catch (e) {} wake = null;
+  const n = R.got.length; $('#dnScore').textContent = n + (n === 1 ? ' word' : ' words'); $('#dnDeck').textContent = (deck.emoji || '') + ' ' + deck.name + ' · ' + Math.round(secs / 60 * 10) / 10 + ' min';
+  $('#dnEm').textContent = n >= 10 ? '🏆' : n >= 5 ? '🎉' : '👏';
+  $('#dnList').innerHTML = R.log.length ? R.log.map(x => `<li class="${x[1] ? 'ok' : 'no'}">${x[1] ? '✓' : '↷'} ${esc(x[0])}</li>`).join('') : '<li class="no">No cards this round.</li>';
+  clearInterval(R.tk); R = null; show('done');
+}
+$('#quit').onclick = () => { if (!R) return; if (R.phase === 'play' || R.phase === 'count') { R.phase = 'over'; msg(''); finish(); } else { R.phase = 'over'; R.log = []; finish(); show('ready'); } };
+$('#again').onclick = () => openReady();
+$('#tGot').onclick = () => answer(true); $('#tPass').onclick = () => answer(false);
+document.addEventListener('keydown', e => { if (!R) return; if (R.phase === 'hold' && (e.key === 'Enter' || e.key === ' ')) countdown(); if (e.key === 'ArrowDown') answer(true); if (e.key === 'ArrowUp') answer(false); });
+document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && R && navigator.wakeLock) try { wake = await navigator.wakeLock.request('screen'); } catch (e) {} });
+loadDecks();
+})();
+</script>
+</body>
+</html>
