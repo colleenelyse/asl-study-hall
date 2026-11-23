@@ -90,6 +90,11 @@ button { font: inherit; cursor: pointer; border: 0; }
 .tname { font: 700 16px Nunito, sans-serif; border: 2px solid #E4DEF5; border-radius: 10px; padding: 7px 10px; width: 100%; }
 .tnames { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 8px 0 4px; }
 .tnames label { display: flex; gap: 6px; align-items: center; }
+.mixl { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.mixl label { display: flex; align-items: center; gap: 10px; border-radius: 14px; padding: 10px 12px; background: #F7F3FF; cursor: pointer; border-left: 8px solid var(--c); }
+.mixl input { width: 24px; height: 24px; accent-color: var(--ink); flex: none; }
+.mixl .em2 { font-size: 26px; }
+.mixl small { display: block; color: var(--muted); font-weight: 800; }
 .homeTip { display: none; margin: 16px 0 0; background: #fff; border-radius: 18px; padding: 12px 14px; gap: 12px; align-items: center; }
 .homeTip.on { display: flex; }
 #msg { font: 700 9vw/1.1 Fredoka, sans-serif; }
@@ -126,6 +131,18 @@ button { font: inherit; cursor: pointer; border: 0; }
     <div class="rule"><span style="font-size:28px" aria-hidden="true">🤫</span><span><b>Voices off!</b> Your group describes the word in ASL: signs, fingerspelling, gestures, facial expressions. No talking, no mouthing the word.</span></div>
     <div id="decks" class="decks" aria-live="polite"><p class="note">Loading decks…</p></div>
     <div class="homeTip" id="homeTip"><span style="font-size:30px" aria-hidden="true">📲</span><span><b>Best on a phone as an app:</b> <span id="homeHow"></span> It opens full screen, sideways, with nothing in the way.</span></div>
+  </section>
+
+  <!-- mix your own (Colleen: "choose which decks get mixed in with checkboxes so that they don't get stuck doing a category they don't know") -->
+  <section id="mix" class="screen">
+    <button class="back" data-go="pick">‹ All decks</button>
+    <div class="panel">
+      <h2 style="margin:0 0 4px;font-size:28px">🔀 Mix your own</h2>
+      <p class="note" style="margin:0 0 10px">Tick the decks your group knows. Their cards get shuffled together.</p>
+      <div class="row" style="margin-bottom:10px"><button class="chip" data-mixall="1">Tick all</button><button class="chip" data-mixall="0">Untick all</button></div>
+      <div id="mixList" class="mixl"></div>
+      <button class="btn wide" id="mixGo" style="margin-top:14px">Next ›</button>
+    </div>
   </section>
 
   <!-- 2. get ready -->
@@ -237,10 +254,11 @@ function paintDecks() {
   const box = $('#decks');
   if (!DECKS.length) { box.innerHTML = '<p class="note">No decks yet.</p>'; return; }
   box.innerHTML = DECKS.map((d, i) => `<button class="deck" data-i="${i}" style="background:${esc(/^#[0-9a-f]{6}$/i.test(d.color || '') ? d.color : COLORS[i % COLORS.length])}"><span class="em">${esc(d.emoji || '🃏')}</span><span><b>${esc(d.name || 'Deck')}</b><br><small>${d.words.length} cards</small></span></button>`).join('')
-    + (DECKS.length > 1 ? `<button class="deck" data-i="mix" style="background:linear-gradient(135deg,#1B1340,#7C4DFF)"><span class="em">🔀</span><span><b>Mix them all</b><br><small>${DECKS.reduce((a, d) => a + d.words.length, 0)} cards</small></span></button>` : '');
+    + (DECKS.length > 1 ? `<button class="deck" data-i="mix" style="background:linear-gradient(135deg,#1B1340,#7C4DFF)"><span class="em">🔀</span><span><b>Mix your own</b><br><small>Pick the decks you know</small></span></button>` : '');
 }
 document.addEventListener('click', e => {
-  const d = e.target.closest('.deck'); if (d) { const i = d.dataset.i; deck = i === 'mix' ? { id: 'mix', name: 'Mix them all', emoji: '🔀', color: '#5B3FD6', words: [].concat(...DECKS.map(x => x.words)), imgs: Object.assign({}, ...DECKS.map(x => x.imgs || {})) } : DECKS[+i]; openReady(); return; }
+  const d = e.target.closest('.deck'); if (d) { const i = d.dataset.i; if (i === 'mix') { openMix(); return; } deck = DECKS[+i]; openReady(); return; }
+  const mx = e.target.closest('[data-mixall]'); if (mx) { const on = mx.dataset.mixall === '1'; $$('#mixList input').forEach(c => { c.checked = on; }); mixCount(); }
   const g = e.target.closest('[data-go]'); if (g) show(g.dataset.go);
   const sh = e.target.closest('[data-show]'); if (sh && !sh.disabled) { cardShow = sh.dataset.show; put('ff-show', cardShow); paintShow(); }
   const md = e.target.closest('[data-mode]'); if (md) { mode = md.dataset.mode; put('ff-mode', mode); paintMode(); }
@@ -253,6 +271,17 @@ const picCount = () => deck.words.filter(w => picOf(w)).length;
 function paintShow() { const n = picCount(), b = document.querySelector('[data-show="pic"]'); b.disabled = n < 5; b.style.opacity = n < 5 ? .45 : 1; if (n < 5 && cardShow === 'pic') cardShow = 'both';
   $$('#shows .chip').forEach(c => c.classList.toggle('on', c.dataset.show === cardShow));
   $('#showNote').textContent = n < 5 ? 'Picture only needs at least 5 cards with pictures (this deck has ' + n + ').' : cardShow === 'pic' ? 'Only the ' + n + ' cards with a picture are used. The names show at the end.' : ''; }
+function openMix() { const keep = readJ('ff-mix', null);
+  $('#mixList').innerHTML = DECKS.map((d, i) => `<label style="--c:${esc(d.color || COLORS[i % COLORS.length])}"><input type="checkbox" value="${esc(d.id)}" ${!keep || keep.includes(d.id) ? 'checked' : ''}><span class="em2" aria-hidden="true">${esc(d.emoji || '🃏')}</span><span>${esc(d.name)}<small>${d.words.length} cards</small></span></label>`).join('');
+  mixCount(); show('mix'); }
+function mixPicked() { return $$('#mixList input').filter(c => c.checked).map(c => c.value); }
+function mixCount() { const ids = mixPicked(), n = new Set([].concat(...DECKS.filter(d => ids.includes(d.id)).map(d => d.words.map(w => String(w).toLowerCase())))).size;      /* a card in two decks counts once */
+  $('#mixGo').disabled = !ids.length; $('#mixGo').style.opacity = ids.length ? 1 : .5; $('#mixGo').textContent = ids.length ? 'Next: ' + ids.length + (ids.length === 1 ? ' deck, ' : ' decks, ') + n + ' cards ›' : 'Tick at least one deck'; }
+document.addEventListener('change', e => { if (e.target.closest && e.target.closest('#mixList')) mixCount(); });
+$('#mixGo').onclick = () => { const ids = mixPicked(); if (!ids.length) return; put('ff-mix', JSON.stringify(ids)); const L = DECKS.filter(d => ids.includes(d.id)), seen = new Set(), words = [];
+  L.forEach(d => d.words.forEach(w => { const k = String(w).toLowerCase(); if (!seen.has(k)) { seen.add(k); words.push(w); } }));
+  deck = L.length === 1 ? L[0] : { id: 'mix:' + ids.slice().sort().join('+'), name: L.length === DECKS.length ? 'All decks mixed' : L.length <= 2 ? L.map(d => d.name).join(' + ') : 'Mix of ' + L.length + ' decks', emoji: '🔀', color: '#5B3FD6', words, imgs: Object.assign({}, ...L.map(x => x.imgs || {})) };
+  openReady(); };
 function paintMode() { $$('#modes .chip').forEach(c => c.classList.toggle('on', c.dataset.mode === mode)); $('#teamSet').hidden = mode !== 'teams'; $('#go').textContent = mode === 'teams' ? '▶ Start the game' : '▶ Start'; if (mode === 'teams') paintNames(); }
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); window.scrollTo(0, 0); }
 function openReady() {
