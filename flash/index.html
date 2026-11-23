@@ -166,6 +166,10 @@ button { font: inherit; cursor: pointer; border: 0; }
       <p style="margin:12px 0 6px">What’s on the card?</p>
       <div class="row" id="shows"><button class="chip on" data-show="both">🖼️ Picture and name</button><button class="chip" data-show="pic">🖼️ Picture only (harder)</button></div>
       <p class="note" id="showNote" style="margin:6px 0 0"></p>
+      <p style="margin:12px 0 6px">“Got it!” sound <span class="note">(tap one to hear it)</span></p>
+      <div class="row" id="snds"><button class="chip" data-snd="chime">🔔 Chime</button><button class="chip" data-snd="ding">🛎️ Ding</button><button class="chip" data-snd="cash">💰 Cha-ching</button><button class="chip" data-snd="fanfare">🎺 Fanfare</button><button class="chip" data-snd="pop">🫧 Pop</button><button class="chip" data-snd="cheer">👏 Applause</button><button class="chip" data-snd="off">🔇 Off</button></div>
+      <p style="margin:12px 0 6px">“Pass” sound <span class="note">(tap one to hear it)</span></p>
+      <div class="row" id="bads"><button class="chip" data-bad="buzz">🚫 Buzz</button><button class="chip" data-bad="womp">🎺 Womp womp</button><button class="chip" data-bad="boing">🌀 Boing</button><button class="chip" data-bad="whoosh">💨 Whoosh</button><button class="chip" data-bad="bonk">🔨 Bonk</button><button class="chip" data-bad="off">🔇 Off</button></div>
       <p style="margin:12px 0 6px">How long is a round?</p>
       <div class="row" id="times"><button class="chip" data-t="60">1 minute</button><button class="chip on" data-t="90">1½ minutes</button><button class="chip" data-t="120">2 minutes</button><button class="chip" data-t="0">⏸ No timer</button></div>
       <ol class="steps">
@@ -263,6 +267,8 @@ document.addEventListener('click', e => {
   const d = e.target.closest('.deck'); if (d) { const i = d.dataset.i; if (i === 'mix') { openMix(); return; } deck = DECKS[+i]; openReady(); return; }
   const mx = e.target.closest('[data-mixall]'); if (mx) { const on = mx.dataset.mixall === '1'; $$('#mixList input').forEach(c => { c.checked = on; }); mixCount(); }
   const g = e.target.closest('[data-go]'); if (g) show(g.dataset.go);
+  const bd = e.target.closest('[data-bad]'); if (bd) { badSnd = bd.dataset.bad; put('ff-bad', badSnd); $$('#bads .chip').forEach(c => c.classList.toggle('on', c === bd)); try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (x) {} BAD[badSnd](); }
+  const sn = e.target.closest('[data-snd]'); if (sn) { goodSnd = sn.dataset.snd; put('ff-snd', goodSnd); $$('#snds .chip').forEach(c => c.classList.toggle('on', c === sn)); try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (x) {} GOOD[goodSnd](); }
   const sh = e.target.closest('[data-show]'); if (sh && !sh.disabled) { cardShow = sh.dataset.show; put('ff-show', cardShow); paintShow(); }
   const md = e.target.closest('[data-mode]'); if (md) { mode = md.dataset.mode; put('ff-mode', mode); paintMode(); }
   const nt = e.target.closest('[data-nt]'); if (nt) { nT = +nt.dataset.nt; $$('#nTeams .chip').forEach(c => c.classList.toggle('on', c === nt)); paintNames(); }
@@ -289,7 +295,7 @@ function paintMode() { $$('#modes .chip').forEach(c => c.classList.toggle('on', 
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); window.scrollTo(0, 0); }
 function openReady() {
   $('#rdName').textContent = (deck.emoji || '') + ' ' + deck.name; $('#rdCount').textContent = deck.words.length + ' cards';
-  $$('#times .chip').forEach(c => c.classList.toggle('on', +c.dataset.t === secs)); mode = get('ff-mode') === 'teams' ? 'teams' : 'solo'; paintMode(); paintShow();
+  $$('#times .chip').forEach(c => c.classList.toggle('on', +c.dataset.t === secs)); mode = get('ff-mode') === 'teams' ? 'teams' : 'solo'; paintMode(); paintShow(); $$('#snds .chip').forEach(c => c.classList.toggle('on', c.dataset.snd === goodSnd)); $$('#bads .chip').forEach(c => c.classList.toggle('on', c.dataset.bad === badSnd));
   $('#resume').hidden = !(T && !T.over && T.deckId === deck.id && T.turn > 0 && T.turn < T.teams.length * T.per);      /* a team game this phone didn't finish */
   show('ready');
 }
@@ -308,7 +314,34 @@ async function askTilt() {
 /* ---------- sounds (made here, no files) ---------- */
 let AC = null;
 function tone(f, t0, d, type, vol) { if (!AC) return; const o = AC.createOscillator(), g = AC.createGain(); o.type = type || 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, AC.currentTime + t0); g.gain.linearRampToValueAtTime(vol || .25, AC.currentTime + t0 + .01); g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + t0 + d); o.connect(g); g.connect(AC.destination); o.start(AC.currentTime + t0); o.stop(AC.currentTime + t0 + d + .05); }
-const SND = { good: () => { tone(660, 0, .12, 'triangle'); tone(990, .1, .22, 'triangle'); }, pass: () => tone(220, 0, .25, 'sawtooth', .12), tick: () => tone(1200, 0, .05, 'square', .06), go: () => tone(880, 0, .3, 'triangle'), end: () => { tone(392, 0, .25, 'triangle'); tone(330, .22, .25, 'triangle'); tone(262, .44, .5, 'triangle'); } };
+/* "Got it!" sounds (Colleen: "add a sound effect option for correct answers"), all made here, no sound files */
+function noise(t0, d, vol, lo, hi) { if (!AC) return; const n = Math.floor(AC.sampleRate * d), b = AC.createBuffer(1, n, AC.sampleRate), x = b.getChannelData(0); for (let i = 0; i < n; i++) x[i] = Math.random() * 2 - 1;
+  const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); src.buffer = b; f.type = 'bandpass'; f.frequency.value = (lo + hi) / 2; f.Q.value = (lo + hi) / 2 / Math.max(1, hi - lo);
+  g.gain.setValueAtTime(vol, AC.currentTime + t0); g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + t0 + d); src.connect(f); f.connect(g); g.connect(AC.destination); src.start(AC.currentTime + t0); src.stop(AC.currentTime + t0 + d + .02); }
+function sweep(f0, f1, t0, d, vol) { if (!AC) return; const o = AC.createOscillator(), g = AC.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f0, AC.currentTime + t0); o.frequency.exponentialRampToValueAtTime(f1, AC.currentTime + t0 + d);
+  g.gain.setValueAtTime(vol, AC.currentTime + t0); g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + t0 + d + .05); o.connect(g); g.connect(AC.destination); o.start(AC.currentTime + t0); o.stop(AC.currentTime + t0 + d + .1); }
+const GOOD = {
+  chime: () => { tone(660, 0, .12, 'triangle'); tone(990, .1, .22, 'triangle'); },
+  ding: () => { tone(1319, 0, 1.1, 'sine', .3); tone(2637, 0, .5, 'sine', .08); tone(3960, 0, .25, 'sine', .04); },
+  cash: () => { noise(0, .07, .5, 2500, 6000); noise(.09, .06, .4, 2500, 6000); tone(2093, .14, .7, 'sine', .22); tone(2637, .2, .8, 'sine', .2); tone(3136, .26, .9, 'sine', .14); },
+  fanfare: () => { [523, 659, 784].forEach((f, i) => tone(f, i * .09, .12, 'square', .1)); tone(1047, .27, .45, 'square', .12); tone(784, .27, .45, 'triangle', .1); },
+  pop: () => { sweep(300, 1100, 0, .09, .35); tone(1400, .08, .06, 'sine', .08); },
+  cheer: () => { for (let i = 0; i < 26; i++) noise(i * .045 + Math.random() * .03, .05 + Math.random() * .05, .22 + Math.random() * .2, 900, 4500); },
+  off: () => {} };
+let goodSnd = GOOD[get('ff-snd')] ? get('ff-snd') : 'chime';
+/* "Pass" sounds (Colleen: "make a wrong sound too") */
+function slide(type, f0, f1, t0, d, vol) { if (!AC) return; const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f0, AC.currentTime + t0); o.frequency.linearRampToValueAtTime(f1, AC.currentTime + t0 + d);
+  g.gain.setValueAtTime(0, AC.currentTime + t0); g.gain.linearRampToValueAtTime(vol, AC.currentTime + t0 + .02); g.gain.setValueAtTime(vol, AC.currentTime + t0 + d * .8); g.gain.linearRampToValueAtTime(.0001, AC.currentTime + t0 + d); o.connect(g); g.connect(AC.destination); o.start(AC.currentTime + t0); o.stop(AC.currentTime + t0 + d + .05); }
+const BAD = {
+  buzz: () => tone(220, 0, .25, 'sawtooth', .12),
+  womp: () => { slide('sawtooth', 392, 370, 0, .28, .09); slide('sawtooth', 370, 349, .3, .28, .09); slide('sawtooth', 349, 330, .6, .28, .09); slide('sawtooth', 330, 262, .9, .7, .1); },
+  boing: () => { if (!AC) return; const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime; o.type = 'sine'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(420, t + .08);
+    for (let k = 0; k < 6; k++) o.frequency.exponentialRampToValueAtTime(k % 2 ? 300 - k * 20 : 180 - k * 10, t + .08 + (k + 1) * .07); g.gain.setValueAtTime(.3, t); g.gain.exponentialRampToValueAtTime(.001, t + .55); o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + .6); },
+  whoosh: () => { noise(0, .35, .35, 500, 2500); sweep(700, 160, 0, .3, .08); },
+  bonk: () => { sweep(260, 90, 0, .12, .45); noise(0, .04, .3, 200, 1200); },
+  off: () => {} };
+let badSnd = BAD[get('ff-bad')] ? get('ff-bad') : 'buzz';
+const SND = { good: () => GOOD[goodSnd](), pass: () => BAD[badSnd](), tick: () => tone(1200, 0, .05, 'square', .06), go: () => tone(880, 0, .3, 'triangle'), end: () => { tone(392, 0, .25, 'triangle'); tone(330, .22, .25, 'triangle'); tone(262, .44, .5, 'triangle'); } };
 const buzz = n => { try { navigator.vibrate && navigator.vibrate(n); } catch (e) {} };
 
 /* ---------- a round ---------- */

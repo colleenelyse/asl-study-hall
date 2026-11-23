@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.523';
+var VERSION = '4.524';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -3265,9 +3265,13 @@ function api_prizes(auth) {
   requireTeacher_();
   var st = static_(), out = [], kinds = {};
   st.shop.forEach(function (i) { kinds[i.id] = i.kind; });
+  /* 4.524 (Colleen: "when a student contributes to a class reward, i want to see their names listed in the prize queue when they go to redeem it"): who gave toward each unlocked class reward, most first */
+  var who = {}, psh0 = ss_().getSheetByName(TABS.pool), classOf0 = psh0 ? poolClassOf_(st) : null;
+  if (psh0) rows_(psh0, 2, POOL_HEAD.length).forEach(function (x) { if (str_(x[7]) !== 'Unlocked') return; var k = classOf0(x[1], x[2], x[3]) + '|' + str_(x[4]), nm = str_(x[2]) || 'Someone'; who[k] = who[k] || {}; who[k][nm] = (who[k][nm] || 0) + num_(x[6]); });
   rows_(ss_().getSheetByName(TABS.redeem), 2, REDEEM_HEAD.length).forEach(function (x, i) {
     var s = prizeStatus_(x[7]), state = s === 'Available' ? 'ready' : s === 'Waiting for approval' ? 'ask' : s === 'Unlocked' ? 'class' : '';
-    if (state) out.push([i + 2, cellDay_(x[0]), str_(x[2]), str_(x[3]), str_(x[5]), num_(x[6]), str_(x[1]).toLowerCase(), state, kinds[str_(x[4])] || 'phys', /^(Pawtopia character|Closet design|Feature that matches me)/.test(str_(x[8])) ? str_(x[8]) : '']);
+    if (state) out.push([i + 2, cellDay_(x[0]), str_(x[2]), str_(x[3]), str_(x[5]), num_(x[6]), str_(x[1]).toLowerCase(), state, kinds[str_(x[4])] || 'phys', /^(Pawtopia character|Closet design|Feature that matches me)/.test(str_(x[8])) ? str_(x[8]) : '',
+      state === 'class' ? (function (m) { return Object.keys(m).map(function (nm) { return [nm, m[nm]]; }).sort(function (a, b) { return b[1] - a[1]; }); })(who[(classOf0 ? classOf0('', '', x[3]) : str_(x[3])) + '|' + str_(x[4])] || {}) : []]);
   });
   var items = st.shop.filter(function (i) { return i.type === 'class'; }), pools = [];
   if (items.length) {
