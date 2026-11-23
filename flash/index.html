@@ -61,12 +61,25 @@ button { font: inherit; cursor: pointer; border: 0; }
 #game .stage { perspective: 900px; }
 /* the card: it leans with the phone as the student tilts, then flips away down (got it) or up (pass), and the next one flips in (Colleen: "uses the tilt of the phone to flip the cards") */
 #word { font: 700 14vw/1.02 Fredoka, sans-serif; max-width: 100%; overflow-wrap: anywhere; text-shadow: 0 .06em 0 rgba(0,0,0,.25); padding: 3vh 4vw; border-radius: 4vh; background: rgba(255,255,255,.14); box-shadow: 0 1.4vh 0 rgba(0,0,0,.18); transform-origin: 50% 50%; transition: transform .07s linear; backface-visibility: hidden; }
+/* a picture of the person or character, for the group (Colleen: "an image on each ... as realistic as possible": real photos and portraits from Wikipedia) */
+#word img { display: block; margin: 0 auto 1.6vh; height: 36vh; max-width: 56vw; object-fit: cover; object-position: 50% 20%; border-radius: 2.6vh; background: #fff; box-shadow: 0 1vh 0 rgba(0,0,0,.2); }
+#word.hasPic { font-size: 9vw; }
+#credit { position: absolute; left: max(12px, env(safe-area-inset-left)); bottom: 2.4vh; font: 800 1.6vh Nunito, sans-serif; opacity: .7; z-index: 2; }
+.res li img { width: 44px; height: 44px; object-fit: cover; object-position: 50% 20%; border-radius: 10px; flex: none; background: #fff; }
 #word.fin { animation: fin .3s cubic-bezier(.2,.9,.3,1.2); }
 #word.outD { animation: outD .22s ease-in forwards; }
 #word.outU { animation: outU .22s ease-in forwards; }
 @keyframes fin { from { transform: rotateX(-95deg) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes outD { to { transform: rotateX(-95deg) translateY(25%); opacity: 0; } }
 @keyframes outU { to { transform: rotateX(95deg) translateY(-25%); opacity: 0; } }
+.board { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 8px; }
+.board li { display: flex; align-items: center; gap: 10px; border-radius: 14px; padding: 10px 14px; color: #fff; font: 600 20px Fredoka, sans-serif; }
+.board li .pts { margin-left: auto; font-size: 26px; }
+.board li .rds { color: #fff; opacity: .85; font: 800 14px Nunito, sans-serif; }
+.board li.now { outline: 4px solid var(--sun); outline-offset: 2px; }
+.tname { font: 700 16px Nunito, sans-serif; border: 2px solid #E4DEF5; border-radius: 10px; padding: 7px 10px; width: 100%; }
+.tnames { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 8px 0 4px; }
+.tnames label { display: flex; gap: 6px; align-items: center; }
 .homeTip { display: none; margin: 16px 0 0; background: #fff; border-radius: 18px; padding: 12px 14px; gap: 12px; align-items: center; }
 .homeTip.on { display: flex; }
 #msg { font: 700 9vw/1.1 Fredoka, sans-serif; }
@@ -96,7 +109,7 @@ button { font: inherit; cursor: pointer; border: 0; }
 </head>
 <body>
 <div class="wrap">
-  <header class="top"><div class="logo" aria-hidden="true">🤟</div><div><h1>Forehead <span>Flash</span></h1><p class="sub">Phone on your forehead. Friends describe it in ASL. Tilt to answer.</p></div></header>
+  <header class="top"><div class="logo" aria-hidden="true">🤟</div><div><h1>Forehead <span>Flash</span></h1><p class="sub">Phone on your forehead. Friends describe it in ASL. Tilt to answer.</p></div><a id="edit" href="/colleen/flash" hidden style="margin-left:auto;background:var(--ink);color:#fff;border-radius:12px;padding:8px 12px;font-weight:800;text-decoration:none;white-space:nowrap">✏️ Edit decks</a></header>
 
   <!-- 1. pick a deck -->
   <section id="pick" class="screen on">
@@ -110,6 +123,16 @@ button { font: inherit; cursor: pointer; border: 0; }
     <button class="back" data-go="pick">‹ All decks</button>
     <div class="panel">
       <div class="row" style="justify-content:space-between"><h2 id="rdName" style="margin:0;font-size:28px"></h2><span id="rdCount" class="note"></span></div>
+      <p style="margin:12px 0 6px">How are you playing?</p>
+      <div class="row" id="modes"><button class="chip on" data-mode="solo">🙋 Just play</button><button class="chip" data-mode="teams">🏆 Teams take turns</button></div>
+      <div id="teamSet" hidden>
+        <p style="margin:12px 0 6px">How many teams?</p>
+        <div class="row" id="nTeams"><button class="chip on" data-nt="2">2</button><button class="chip" data-nt="3">3</button><button class="chip" data-nt="4">4</button><button class="chip" data-nt="5">5</button><button class="chip" data-nt="6">6</button></div>
+        <div class="tnames" id="tNames"></div>
+        <p style="margin:12px 0 6px">Turns for each team</p>
+        <div class="row" id="perTeam"><button class="chip on" data-per="1">1 turn</button><button class="chip" data-per="2">2 turns</button><button class="chip" data-per="3">3 turns</button></div>
+        <p class="note" style="margin:8px 0 0">Each turn, the team picks a new person to hold the phone. The rest of the team describes in ASL.</p>
+      </div>
       <p style="margin:12px 0 6px">How long is a round?</p>
       <div class="row" id="times"><button class="chip" data-t="60">1 minute</button><button class="chip on" data-t="90">1½ minutes</button><button class="chip" data-t="120">2 minutes</button></div>
       <ol class="steps">
@@ -118,8 +141,28 @@ button { font: inherit; cursor: pointer; border: 0; }
         <li><span class="n">3</span><span>Tilt to answer:</span></li>
       </ol>
       <div class="tilt"><div style="background:var(--good)">⬇️ Tilt DOWN<br>Got it!</div><div style="background:var(--pass)">⬆️ Tilt UP<br>Pass</div></div>
+      <button class="btn alt wide" id="resume" hidden style="margin-bottom:10px">↩ Keep going: the team game in progress</button>
       <button class="btn wide" id="go">▶ Start</button>
       <p class="note" id="tiltNote" style="margin:10px 0 0">Your phone may ask to use motion. Tap <b>Allow</b> so the tilt works.</p>
+    </div>
+  </section>
+
+  <!-- teams: whose turn it is -->
+  <section id="tturn" class="screen">
+    <div class="panel">
+      <p class="note" style="margin:0" id="ttWhich"></p>
+      <h2 id="ttTeam" style="margin:4px 0 6px;font-size:34px"></h2>
+      <p style="margin:0 0 6px">Pick who holds the phone this time. Everyone else on the team describes in ASL. The other teams watch: <b>voices off</b>!</p>
+      <ol class="board" id="ttBoard"></ol>
+      <div class="row"><button class="btn" id="ttGo">▶ Start the round</button><button class="btn alt" id="ttEnd">End the game</button></div>
+    </div>
+  </section>
+  <section id="final" class="screen">
+    <div class="panel" style="text-align:center">
+      <div style="font-size:64px" aria-hidden="true">🏆</div>
+      <h2 id="fnWin" style="margin:0;font-size:34px"></h2>
+      <ol class="board" id="fnBoard" style="text-align:left"></ol>
+      <div class="row" style="justify-content:center"><button class="btn" id="fnNew">↻ New game, same teams</button><button class="btn alt" data-go="pick">Pick a deck</button></div>
     </div>
   </section>
 
@@ -129,6 +172,7 @@ button { font: inherit; cursor: pointer; border: 0; }
       <div class="row" style="justify-content:space-between;align-items:flex-end"><div><p class="note" style="margin:0" id="dnDeck"></p><div class="bigscore" id="dnScore"></div></div><span style="font-size:56px" aria-hidden="true" id="dnEm">🎉</span></div>
       <p style="margin:10px 0 0">Go over the ones you passed: how would <b>you</b> describe them in ASL?</p>
       <ul class="res" id="dnList"></ul>
+      <ol class="board" id="dnBoard" hidden></ol>
       <div class="row"><button class="btn" id="again">↻ Play again</button><button class="btn alt" data-go="pick">Pick a deck</button></div>
     </div>
   </section>
@@ -141,6 +185,7 @@ button { font: inherit; cursor: pointer; border: 0; }
   <div class="stage"><div id="word"></div><div id="msg"></div></div>
   <div id="taps"><button id="tPass">⬆ Pass</button><button id="tGot">Got it ⬇</button></div>
   <div id="bar"></div>
+  <div id="credit"></div>
 </div>
 <div id="turn"><div><span class="ph" aria-hidden="true">📱</span>Turn your phone sideways<br><small style="font:800 16px Nunito;opacity:.85">(If it doesn’t turn, switch off rotation lock.)</small></div></div>
 
@@ -151,6 +196,21 @@ const COLORS = ['#3D5AFE', '#E91E63', '#00A884', '#7C4DFF', '#FF6D00', '#0091EA'
 const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let DECKS = [], deck = null, secs = +(get('ff-secs') || 90);
+/* teams (Colleen 2026-11-23: "add a teams scoreboard so groups can take turns"). T is saved on this phone, so a closed tab doesn't lose the scores. */
+const TCOL = [['🔴', 'Red Team', '#E53935'], ['🔵', 'Blue Team', '#1E63E9'], ['🟢', 'Green Team', '#14A35B'], ['🟣', 'Purple Team', '#7C3AED'], ['🟠', 'Orange Team', '#F26B0F'], ['🟡', 'Gold Team', '#C99700']];
+const readJ = (k, d) => { try { return JSON.parse(get(k) || 'null') || d; } catch (e) { return d; } };
+let mode = 'solo', nT = 2, per = 1, R_TEAM = -1, names = readJ('ff-names', []), T = readJ('ff-teams', null);
+const saveT = () => put('ff-teams', JSON.stringify(T));
+function paintNames() { $('#tNames').innerHTML = TCOL.slice(0, nT).map((c, i) => `<label><span aria-hidden="true">${c[0]}</span><input class="tname" data-tn="${i}" value="${esc(names[i] || c[1])}" aria-label="Team ${i + 1} name" maxlength="24"></label>`).join(''); }
+function boardHtml(cur) { const rows = T.teams.map((t, i) => ({ t, i })).sort((a, b) => b.t.score - a.t.score);
+  return rows.map(({ t, i }) => `<li class="${i === cur ? 'now' : ''}" style="background:${t.color}"><span aria-hidden="true">${t.em}</span>${esc(t.name)}<span class="rds">${t.rounds.length ? t.rounds.join(' + ') : ''}</span><span class="pts">${t.score}</span></li>`).join(''); }
+const turnTeam = () => T.turn % T.teams.length, turnsTotal = () => T.teams.length * T.per;
+function showTurn() { const i = turnTeam(), t = T.teams[i];
+  $('#ttWhich').textContent = 'Turn ' + (T.turn + 1) + ' of ' + turnsTotal() + ' · ' + (deck.emoji || '') + ' ' + deck.name;
+  $('#ttTeam').innerHTML = `<span aria-hidden="true">${t.em}</span> ${esc(t.name)}’s turn`; $('#ttTeam').style.color = t.color; $('#ttBoard').innerHTML = boardHtml(i); show('tturn'); }
+function showFinal() { const top = Math.max(...T.teams.map(t => t.score)), win = T.teams.filter(t => t.score === top);
+  $('#fnWin').textContent = win.length > 1 ? 'Tie! ' + win.map(t => t.name).join(' and ') : win[0].name + ' wins!'; $('#fnBoard').innerHTML = boardHtml(-1); T.over = true; saveT(); show('final'); try { SND.end(); } catch (e) {} }
+function newTeams() { T = { deckId: deck.id, secs, per, turn: 0, over: false, teams: TCOL.slice(0, nT).map((c, i) => ({ em: c[0], name: (names[i] || c[1]).trim() || c[1], color: c[2], score: 0, rounds: [] })) }; saveT(); }
 
 /* ---------- decks: hers from asl.cool, else the starters ---------- */
 async function loadDecks() {
@@ -167,14 +227,21 @@ function paintDecks() {
     + (DECKS.length > 1 ? `<button class="deck" data-i="mix" style="background:linear-gradient(135deg,#1B1340,#7C4DFF)"><span class="em">🔀</span><span><b>Mix them all</b><br><small>${DECKS.reduce((a, d) => a + d.words.length, 0)} cards</small></span></button>` : '');
 }
 document.addEventListener('click', e => {
-  const d = e.target.closest('.deck'); if (d) { const i = d.dataset.i; deck = i === 'mix' ? { id: 'mix', name: 'Mix them all', emoji: '🔀', color: '#5B3FD6', words: [].concat(...DECKS.map(x => x.words)) } : DECKS[+i]; openReady(); return; }
+  const d = e.target.closest('.deck'); if (d) { const i = d.dataset.i; deck = i === 'mix' ? { id: 'mix', name: 'Mix them all', emoji: '🔀', color: '#5B3FD6', words: [].concat(...DECKS.map(x => x.words)), imgs: Object.assign({}, ...DECKS.map(x => x.imgs || {})) } : DECKS[+i]; openReady(); return; }
   const g = e.target.closest('[data-go]'); if (g) show(g.dataset.go);
+  const md = e.target.closest('[data-mode]'); if (md) { mode = md.dataset.mode; put('ff-mode', mode); paintMode(); }
+  const nt = e.target.closest('[data-nt]'); if (nt) { nT = +nt.dataset.nt; $$('#nTeams .chip').forEach(c => c.classList.toggle('on', c === nt)); paintNames(); }
+  const pr = e.target.closest('[data-per]'); if (pr) { per = +pr.dataset.per; $$('#perTeam .chip').forEach(c => c.classList.toggle('on', c === pr)); }
   const t = e.target.closest('[data-t]'); if (t) { secs = +t.dataset.t; put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c === t)); }
 });
+document.addEventListener('input', e => { if (e.target.dataset && e.target.dataset.tn !== undefined) { names[+e.target.dataset.tn] = e.target.value; put('ff-names', JSON.stringify(names)); } });
+function paintMode() { $$('#modes .chip').forEach(c => c.classList.toggle('on', c.dataset.mode === mode)); $('#teamSet').hidden = mode !== 'teams'; $('#go').textContent = mode === 'teams' ? '▶ Start the game' : '▶ Start'; if (mode === 'teams') paintNames(); }
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); window.scrollTo(0, 0); }
 function openReady() {
   $('#rdName').textContent = (deck.emoji || '') + ' ' + deck.name; $('#rdCount').textContent = deck.words.length + ' cards';
-  $$('#times .chip').forEach(c => c.classList.toggle('on', +c.dataset.t === secs)); show('ready');
+  $$('#times .chip').forEach(c => c.classList.toggle('on', +c.dataset.t === secs)); mode = get('ff-mode') === 'teams' ? 'teams' : 'solo'; paintMode();
+  $('#resume').hidden = !(T && !T.over && T.deckId === deck.id && T.turn > 0 && T.turn < T.teams.length * T.per);      /* a team game this phone didn't finish */
+  show('ready');
 }
 
 /* ---------- the tilt ----------
@@ -201,7 +268,12 @@ function bag(words) {      // shuffled, the cards this phone saw least recently 
   const mix = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   return mix(fresh).concat(old);
 }
-$('#go').onclick = async () => {
+$('#go').onclick = () => { if (mode === 'teams') { newTeams(); showTurn(); } else { R_TEAM = -1; startRound(); } };
+$('#resume').onclick = () => showTurn();
+$('#ttGo').onclick = () => { R_TEAM = turnTeam(); startRound(); };
+$('#ttEnd').onclick = () => showFinal();
+$('#fnNew').onclick = () => { T.teams.forEach(t => { t.score = 0; t.rounds = []; }); T.turn = 0; T.over = false; T.deckId = deck.id; saveT(); showTurn(); };
+async function startRound() {
   try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) {}
   const words = deck.words.map(w => String(w).trim()).filter(Boolean);
   const hasTilt = await askTilt();
@@ -217,8 +289,10 @@ $('#go').onclick = async () => {
 };
 function msg(t, small) { $('#msg').innerHTML = esc(t) + (small ? '<small>' + esc(small) + '</small>' : ''); $('#msg').style.display = t ? '' : 'none'; }
 function countdown() { if (!R || R.phase !== 'hold') return; R.phase = 'count'; let n = 3; const step = () => { if (!R || R.phase !== 'count') return; if (n) { msg(String(n)); SND.tick(); n--; setTimeout(step, 800); } else { msg(''); SND.go(); R.phase = 'play'; R.end = Date.now() + secs * 1000; next(); } }; step(); }
-function fit() { const w = $('#word'); let s = 14; w.style.fontSize = s + 'vw'; const box = $('#game .stage'); for (let k = 0; k < 30 && (w.scrollWidth > box.clientWidth * .92 || w.scrollHeight > box.clientHeight * .8); k++) { s *= .92; w.style.fontSize = s + 'vw'; } }
-function next() { if (!R) return; R.i++; if (R.i >= R.list.length) { R.list = R.list.concat(bag(R.list)); } const w = R.list[R.i]; const el = $('#word'); el.className = ''; el.style.transform = ''; el.textContent = w; el.style.display = ''; fit(); void el.offsetWidth; el.className = 'fin'; R.armed = false; R.shown = Date.now(); }
+function fit() { const w = $('#word'); let s = w.classList.contains('hasPic') ? 9 : 14; w.style.fontSize = s + 'vw'; const box = $('#game .stage'); for (let k = 0; k < 30 && (w.scrollWidth > box.clientWidth * .92 || w.scrollHeight > box.clientHeight * .8); k++) { s *= .92; w.style.fontSize = s + 'vw'; } }
+const picOf = w => { const m = deck && deck.imgs; const u = m && m[w]; return typeof u === 'string' && /^https:/.test(u) ? u : ''; };
+function next() { if (!R) return; R.i++; if (R.i >= R.list.length) { R.list = R.list.concat(bag(R.list)); } const w = R.list[R.i]; const el = $('#word'), pic = picOf(w); el.className = pic ? 'hasPic' : ''; el.style.transform = ''; el.innerHTML = (pic ? `<img src="${esc(pic)}" alt="">` : '') + `<span>${esc(w)}</span>`; $('#credit').textContent = pic ? 'Picture: Wikipedia' : ''; el.style.display = ''; fit(); void el.offsetWidth; el.classList.add('fin');
+  const nx = R.list[R.i + 1], np = nx && picOf(nx); if (np) { const im = new Image(); im.src = np; } R.armed = false; R.shown = Date.now(); }
 function answer(ok) {
   if (!R || R.phase !== 'play' || R.busy) return; R.busy = true; const w = R.list[R.i]; R.log.push([w, ok]); if (ok) R.got.push(w);
   const g = $('#game'), el = $('#word'); el.style.transform = ''; el.className = ok ? 'outD' : 'outU'; setTimeout(() => { g.classList.add(ok ? 'good' : 'pass'); el.style.display = 'none'; msg(ok ? 'Got it!' : 'Pass'); }, 200); ok ? SND.good() : SND.pass(); buzz(ok ? 60 : [30, 40, 30]);
@@ -251,15 +325,21 @@ function finish() {
   try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {} try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) {} try { wake && wake.release(); } catch (e) {} wake = null;
   const n = R.got.length; $('#dnScore').textContent = n + (n === 1 ? ' word' : ' words'); $('#dnDeck').textContent = (deck.emoji || '') + ' ' + deck.name + ' · ' + Math.round(secs / 60 * 10) / 10 + ' min';
   $('#dnEm').textContent = n >= 10 ? '🏆' : n >= 5 ? '🎉' : '👏';
-  $('#dnList').innerHTML = R.log.length ? R.log.map(x => `<li class="${x[1] ? 'ok' : 'no'}">${x[1] ? '✓' : '↷'} ${esc(x[0])}</li>`).join('') : '<li class="no">No cards this round.</li>';
+  $('#dnList').innerHTML = R.log.length ? R.log.map(x => `<li class="${x[1] ? 'ok' : 'no'}">${picOf(x[0]) ? `<img src="${esc(picOf(x[0]))}" alt="">` : ''}${x[1] ? '✓' : '↷'} ${esc(x[0])}</li>`).join('') : '<li class="no">No cards this round.</li>';
+  const tb = $('#dnBoard');
+  if (R_TEAM >= 0 && T) { const tm = T.teams[R_TEAM]; tm.score += n; tm.rounds.push(n); T.turn++; saveT(); tb.innerHTML = boardHtml(R_TEAM); tb.hidden = false;
+    $('#dnDeck').textContent = tm.em + ' ' + tm.name + ' · ' + (deck.emoji || '') + ' ' + deck.name; $('#again').textContent = T.turn >= turnsTotal() ? '🏆 See who won' : '▶ Next: ' + T.teams[turnTeam()].name; }
+  else { tb.hidden = true; $('#again').textContent = '↻ Play again'; }
   clearInterval(R.tk); R = null; show('done');
 }
-$('#quit').onclick = () => { if (!R) return; if (R.phase === 'play' || R.phase === 'count') { R.phase = 'over'; msg(''); finish(); } else { R.phase = 'over'; R.log = []; finish(); show('ready'); } };
-$('#again').onclick = () => openReady();
+$('#quit').onclick = () => { if (!R) return; if (R.phase === 'play') { R.phase = 'over'; msg(''); finish(); } else { R.phase = 'over'; R.log = []; const was = R_TEAM; R_TEAM = -1; finish(); if (was >= 0 && T) showTurn(); else show('ready'); } };      /* ended before the first card: no turn used */
+$('#again').onclick = () => { if (R_TEAM >= 0 && T) { R_TEAM = -1; T.turn >= turnsTotal() ? showFinal() : showTurn(); } else openReady(); };
 $('#tGot').onclick = () => answer(true); $('#tPass').onclick = () => answer(false);
 document.addEventListener('keydown', e => { if (!R) return; if (R.phase === 'hold' && (e.key === 'Enter' || e.key === ' ')) countdown(); if (e.key === 'ArrowDown') answer(true); if (e.key === 'ArrowUp') answer(false); });
 document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && R && navigator.wakeLock) try { wake = await navigator.wakeLock.request('screen'); } catch (e) {} });
 loadDecks();
+/* the teacher (signed in to her quick links on this device) gets an Edit button; everyone else never sees it */
+fetch('/colleen/flash-decks.json', { cache: 'no-store' }).then(r => { if (r.ok && /json/.test(r.headers.get('content-type') || '')) $('#edit').hidden = false; }).catch(() => {});
 /* phones: suggest adding it to the Home Screen, where it opens full screen (an iPhone can't go full screen in Safari) */
 try { const standalone = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone, ios = /iPhone|iPad|iPod/.test(navigator.userAgent), phone = ios || /Android/.test(navigator.userAgent);
   if (phone && !standalone) { $('#homeHow').innerHTML = ios ? 'tap <b>Share</b> <span aria-hidden="true">⬆️</span>, then <b>Add to Home Screen</b>.' : 'tap <b>⋮</b>, then <b>Add to Home screen</b> (or <b>Install app</b>).'; $('#homeTip').classList.add('on'); } } catch (e) {}
