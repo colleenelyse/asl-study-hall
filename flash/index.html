@@ -66,6 +66,8 @@ button { font: inherit; cursor: pointer; border: 0; }
 /* every card the same (Colleen: "image on the left and the text on the right. the text should be the priority for space use") */
 #word .pic { flex: 0 0 28%; border-radius: 2.6vh; background: rgba(255,255,255,.18) 50% 20% / cover no-repeat; box-shadow: 0 1vh 0 rgba(0,0,0,.2); display: grid; place-items: center; font-size: 16vh; }
 #word .pic.has { background-color: #fff; }
+#word .pic.cut { background-color: transparent; background-size: contain; background-position: 50% 50%; box-shadow: none; filter: drop-shadow(0 1vh 0 rgba(0,0,0,.18)); }
+.res li img.cut { background: transparent; object-fit: contain; }
 #word .txt { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; text-align: center; font: 700 12vw/1.04 Fredoka, sans-serif; overflow: hidden; }
 #word .txt span { display: block; max-width: 100%; overflow-wrap: normal; word-break: normal; hyphens: none; }
 /* picture only (Colleen: "a picture only mode to challenge students without words") */
@@ -338,9 +340,40 @@ async function startRound() {
 function msg(t, small) { $('#msg').innerHTML = esc(t) + (small ? '<small>' + esc(small) + '</small>' : ''); $('#msg').style.display = t ? '' : 'none'; }
 function countdown() { if (!R || R.phase !== 'hold') return; R.phase = 'count'; let n = 3; const step = () => { if (!R || R.phase !== 'count') return; if (n) { msg(String(n)); SND.tick(); n--; setTimeout(step, 800); } else { msg(''); SND.go(); R.phase = 'play'; R.end = Date.now() + secs * 1000; next(); } }; step(); }
 function fit() { const t = $('#word .txt'), sp = t && t.firstChild; if (!sp || $('#word').classList.contains('only')) return; let s = 12; t.style.fontSize = s + 'vw'; for (let k = 0; k < 40 && (sp.scrollWidth > t.clientWidth || sp.offsetHeight > t.clientHeight); k++) { s *= .93; t.style.fontSize = s + 'vw'; } }      /* the name as big as it fits, never broken mid-word */
+/* white backgrounds out (Colleen 2026-11-23: "make images without transparent backgrounds be transparent"): a picture whose edges are mostly plain white gets that
+   white (only the white touching the edges) made see-through; a picture that is already transparent, or a photo with a real background, stays as it is.
+   Pictures from other sites go through asl.cool/flash/img so the browser may read them. Results are kept for the visit. */
+const CUT = new Map();
+function loadImg(src) { return new Promise((ok, no) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => ok(im); im.onerror = no; im.src = src; }); }
+function cutout(url) {
+  if (!url) return Promise.resolve(null); if (CUT.has(url)) return CUT.get(url);
+  const job = (async () => {
+    let im; try { im = await loadImg(url); } catch (e) { try { im = await loadImg('img?u=' + encodeURIComponent(url)); } catch (e2) { return { src: url, cut: false }; } }
+    try {
+      const k = Math.min(1, 640 / Math.max(im.naturalWidth, im.naturalHeight)), W = Math.max(1, Math.round(im.naturalWidth * k)), H = Math.max(1, Math.round(im.naturalHeight * k));
+      const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0, W, H);
+      const d = g.getImageData(0, 0, W, H), a = d.data, N = W * H;
+      const edge = []; for (let x = 0; x < W; x++) { edge.push(x, (H - 1) * W + x); } for (let y = 1; y < H - 1; y++) { edge.push(y * W, y * W + W - 1); }
+      let clear = 0, white = 0; const isW = i => { const r = a[i * 4], gg = a[i * 4 + 1], b = a[i * 4 + 2], lo = Math.min(r, gg, b), hi = Math.max(r, gg, b); return a[i * 4 + 3] > 200 && lo > 226 && hi - lo < 24; };
+      edge.forEach(i => { if (a[i * 4 + 3] < 200) clear++; else if (isW(i)) white++; });
+      if (clear > edge.length * .1) return { src: url, cut: true };      // already transparent
+      if (white < edge.length * .55) return { src: url, cut: false };      // a real background: leave it
+      const seen = new Uint8Array(N), q = []; edge.forEach(i => { if (!seen[i] && isW(i)) { seen[i] = 1; q.push(i); } });
+      const soft = i => { const r = a[i * 4], gg = a[i * 4 + 1], b = a[i * 4 + 2], lo = Math.min(r, gg, b), hi = Math.max(r, gg, b); return lo > 200 && hi - lo < 34; };
+      while (q.length) { const i = q.pop(), x = i % W, y = (i - x) / W; const nb = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1];
+        for (const j of nb) if (j >= 0 && !seen[j] && soft(j)) { seen[j] = 1; q.push(j); } }
+      for (let i = 0; i < N; i++) if (seen[i]) { const lo = Math.min(a[i * 4], a[i * 4 + 1], a[i * 4 + 2]); a[i * 4 + 3] = lo >= 240 ? 0 : Math.round(255 * (240 - lo) / 40); }      // soft edge, no white halo
+      g.putImageData(d, 0, 0);
+      const blob = await new Promise(r => c.toBlob(r, 'image/png')); return blob ? { src: URL.createObjectURL(blob), cut: true } : { src: url, cut: false };
+    } catch (e) { return { src: url, cut: false }; }
+  })();
+  CUT.set(url, job); return job;
+}
 const picOf = w => { const m = deck && deck.imgs; const u = m && m[w]; return typeof u === 'string' && /^https:/.test(u) ? u : ''; };
-function next() { if (!R) return; R.i++; if (R.i >= R.list.length) { R.list = R.list.concat(bag(R.list)); } const w = R.list[R.i]; const el = $('#word'), pic = picOf(w); el.className = R.only ? 'only' : ''; el.style.transform = ''; el.innerHTML = `<div class="pic${pic ? ' has' : ''}"${pic ? ` style="background-image:url('${esc(pic)}')"` : ''}>${pic ? '' : esc(deck.emoji || '🃏')}</div><div class="txt"><span>${esc(w)}</span></div>`; $('#credit').textContent = pic ? 'Picture: Wikipedia' : ''; el.style.display = ''; fit(); void el.offsetWidth; el.classList.add('fin');
-  const nx = R.list[R.i + 1], np = nx && picOf(nx); if (np) { const im = new Image(); im.src = np; } R.armed = false; R.shown = Date.now(); }
+function next() { if (!R) return; R.i++; if (R.i >= R.list.length) { R.list = R.list.concat(bag(R.list)); } const w = R.list[R.i]; const el = $('#word'), pic = picOf(w); el.className = R.only ? 'only' : ''; el.style.transform = ''; el.innerHTML = `<div class="pic${pic ? ' has' : ''}"${pic ? ` style="background-image:url('${esc(pic)}');visibility:hidden"` : ''}>${pic ? '' : esc(deck.emoji || '🃏')}</div><div class="txt"><span>${esc(w)}</span></div>`;
+  if (pic) { const pe = el.querySelector('.pic'), me = R.i, put = r => { if (!R || R.i !== me || !pe.isConnected) return; if (r) { pe.style.backgroundImage = "url('" + r.src + "')"; pe.classList.toggle('cut', !!r.cut); } pe.style.visibility = ''; };
+    cutout(pic).then(put); setTimeout(() => { if (pe.style.visibility) pe.style.visibility = ''; }, 900); }      /* wait up to 0.9 s for the cut-out, then show the picture anyway */ $('#credit').textContent = /wikimedia\.org/.test(pic) ? 'Picture: Wikipedia' : ''; el.style.display = ''; fit(); void el.offsetWidth; el.classList.add('fin');
+  [1, 2].forEach(k => { const nx = R.list[R.i + k], np = nx && picOf(nx); if (np) cutout(np); });      /* get the next two ready */ R.armed = false; R.shown = Date.now(); }
 function answer(ok) {
   if (!R || R.phase !== 'play' || R.busy) return; R.busy = true; const w = R.list[R.i]; R.log.push([w, ok]); if (ok) R.got.push(w);
   const g = $('#game'), el = $('#word'); el.style.transform = ''; el.className = ok ? 'outD' : 'outU'; setTimeout(() => { g.classList.add(ok ? 'good' : 'pass'); el.style.display = 'none'; msg(ok ? 'Got it!' : 'Pass'); }, 200); ok ? SND.good() : SND.pass(); buzz(ok ? 60 : [30, 40, 30]);
@@ -376,6 +409,7 @@ function finish() {
   const n = R.got.length; $('#dnScore').textContent = n + (n === 1 ? ' word' : ' words'); $('#dnDeck').textContent = (deck.emoji || '') + ' ' + deck.name + ' · ' + (secs ? Math.round(secs / 60 * 10) / 10 + ' min' : 'no timer');
   $('#dnEm').textContent = n >= 10 ? '🏆' : n >= 5 ? '🎉' : '👏';
   $('#dnList').innerHTML = R.log.length ? R.log.map(x => `<li class="${x[1] ? 'ok' : 'no'}">${picOf(x[0]) ? `<img src="${esc(picOf(x[0]))}" alt="">` : ''}${x[1] ? '✓' : '↷'} ${esc(x[0])}</li>`).join('') : '<li class="no">No cards this round.</li>';
+  $$('#dnList img').forEach(im => cutout(im.getAttribute('src')).then(r => { if (r) { im.src = r.src; im.classList.toggle('cut', !!r.cut); } }));      /* the cut-out pictures in the list too */
   const tb = $('#dnBoard');
   if (R_TEAM >= 0 && T) { const tm = T.teams[R_TEAM]; tm.score += n; tm.rounds.push(n); T.turn++; saveT(); tb.innerHTML = boardHtml(R_TEAM); tb.hidden = false;
     $('#dnDeck').textContent = tm.em + ' ' + tm.name + ' · ' + (deck.emoji || '') + ' ' + deck.name; $('#again').textContent = T.turn >= turnsTotal() ? '🏆 See who won' : '▶ Next: ' + T.teams[turnTeam()].name; }

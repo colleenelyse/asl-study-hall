@@ -1,7 +1,7 @@
 /* Forehead Flash (2026-11-23): makes the Home Screen app open fast and keep working if the Wi-Fi drops.
    The page and icons: saved copy first, refreshed in the background. Her decks (decks.json): the network first, the saved copy if offline.
    Pictures: saved the first time they load, so a deck played once works offline. Change VER to replace everything. */
-const VER = 'ff-5', SHELL = ['./', 'index.html', 'starter.json', 'manifest.json', 'icon-192.png', 'icon-512.png'];
+const VER = 'ff-6', SHELL = ['./', 'index.html', 'starter.json', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VER).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VER && k !== 'ff-pics').map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
