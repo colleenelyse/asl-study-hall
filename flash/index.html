@@ -9,7 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Forehead Flash">
 <title>Forehead Flash</title>
 <link rel="icon" type="image/png" href="../img/logo-512.png">
-<link rel="apple-touch-icon" href="../img/logo-512.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
 <!-- Forehead Flash (Colleen, 2026-11-23): "the heads up game/app for the phone that works with a tilt like the real game ... i want to be able to build and choose from
@@ -338,6 +339,10 @@ $('#tGot').onclick = () => answer(true); $('#tPass').onclick = () => answer(fals
 document.addEventListener('keydown', e => { if (!R) return; if (R.phase === 'hold' && (e.key === 'Enter' || e.key === ' ')) countdown(); if (e.key === 'ArrowDown') answer(true); if (e.key === 'ArrowUp') answer(false); });
 document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && R && navigator.wakeLock) try { wake = await navigator.wakeLock.request('screen'); } catch (e) {} });
 loadDecks();
+/* Android/Chrome: a real Install button in the tip */
+let instEv = null; window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; const how = $('#homeHow'); if (how) { how.innerHTML = '<button class="btn" id="instBtn" style="padding:8px 16px;font-size:17px">📲 Install the app</button>'; $('#homeTip').classList.add('on'); $('#instBtn').onclick = async () => { instEv.prompt(); try { await instEv.userChoice; } catch (x) {} instEv = null; $('#homeTip').classList.remove('on'); }; } });
+window.addEventListener('appinstalled', () => { $('#homeTip').classList.remove('on'); });
+try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js'); } catch (e) {}      /* the Home Screen app: opens fast, keeps working if the Wi-Fi drops */
 /* the teacher (signed in to her quick links on this device) gets an Edit button; everyone else never sees it */
 fetch('/colleen/flash-decks.json', { cache: 'no-store' }).then(r => { if (r.ok && /json/.test(r.headers.get('content-type') || '')) $('#edit').hidden = false; }).catch(() => {});
 /* phones: suggest adding it to the Home Screen, where it opens full screen (an iPhone can't go full screen in Safari) */
