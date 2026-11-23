@@ -97,6 +97,21 @@ button { font: inherit; cursor: pointer; border: 0; }
 .mixl input { width: 24px; height: 24px; accent-color: var(--ink); flex: none; }
 .mixl .em2 { font-size: 26px; }
 .mixl small { display: block; color: var(--muted); font-weight: 800; }
+.bzboard { display: flex; flex-wrap: wrap; gap: 8px; }
+.bzboard li { flex: 1 1 150px; padding: 8px 12px; font-size: 18px; }
+.bzstage { margin: 10px 0; min-height: 300px; display: grid; place-items: center; text-align: center; position: relative; overflow: hidden; }
+.bzstage h2 { font-size: clamp(30px, 6vw, 60px); margin: 0 0 8px; }
+.bzbig { font: 700 clamp(26px, 4.5vw, 46px) Fredoka, sans-serif; }
+.bzbtns { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.bzbtns button { color: #fff; border-radius: 22px; padding: 22px 10px; font: 700 clamp(20px, 3vw, 30px) Fredoka, sans-serif; box-shadow: 0 7px 0 rgba(0,0,0,.28); }
+.bzbtns button:active { transform: translateY(4px); box-shadow: 0 3px 0 rgba(0,0,0,.28); }
+.bzbtns button[disabled] { opacity: .3; cursor: default; }
+.bzbtns small { display: block; font: 800 14px Nunito, sans-serif; opacity: .85; }
+.peek { user-select: none; -webkit-user-select: none; touch-action: none; }
+.bzcard { display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.bzcard .bzpic { width: clamp(140px, 24vw, 260px); aspect-ratio: 1; border-radius: 20px; background: #fff 50% 20% / cover no-repeat; box-shadow: 0 6px 0 rgba(27,19,64,.15); }
+.bzcard .bzpic.cut { background-color: transparent; background-size: contain; background-position: 50% 50%; box-shadow: none; }
+.bzcard .bzname { font: 700 clamp(34px, 6vw, 72px)/1.05 Fredoka, sans-serif; max-width: 100%; }
 .homeTip { display: none; margin: 16px 0 0; background: #fff; border-radius: 18px; padding: 12px 14px; gap: 12px; align-items: center; }
 .homeTip.on { display: flex; }
 #msg { font: 700 9vw/1.1 Fredoka, sans-serif; }
@@ -154,14 +169,17 @@ button { font: inherit; cursor: pointer; border: 0; }
     <div class="panel">
       <div class="row" style="justify-content:space-between"><h2 id="rdName" style="margin:0;font-size:28px"></h2><span id="rdCount" class="note"></span></div>
       <p style="margin:12px 0 6px">How are you playing?</p>
-      <div class="row" id="modes"><button class="chip on" data-mode="solo">🙋 Just play</button><button class="chip" data-mode="teams">🏆 Teams take turns</button></div>
+      <div class="row" id="modes"><button class="chip on" data-mode="solo">🙋 Just play</button><button class="chip" data-mode="teams">🏆 Teams take turns</button><button class="chip" data-mode="buzz">🔔 Buzzer battle</button></div>
       <div id="teamSet" hidden>
         <p style="margin:12px 0 6px">How many teams?</p>
         <div class="row" id="nTeams"><button class="chip on" data-nt="2">2</button><button class="chip" data-nt="3">3</button><button class="chip" data-nt="4">4</button><button class="chip" data-nt="5">5</button><button class="chip" data-nt="6">6</button></div>
         <div class="tnames" id="tNames"></div>
-        <p style="margin:12px 0 6px">Turns for each team</p>
+        <div id="perWrap"><p style="margin:12px 0 6px">Turns for each team</p>
         <div class="row" id="perTeam"><button class="chip on" data-per="1">1 turn</button><button class="chip" data-per="2">2 turns</button><button class="chip" data-per="3">3 turns</button></div>
-        <p class="note" style="margin:8px 0 0">Each turn, the team picks a new person to hold the phone. The rest of the team describes in ASL.</p>
+        <p class="note" style="margin:8px 0 0">Each turn, the team picks a new person to hold the phone. The rest of the team describes in ASL.</p></div>
+        <div id="bzWrap" hidden><p style="margin:12px 0 6px">How many cards?</p>
+        <div class="row" id="bzN"><button class="chip" data-bn="10">10 cards</button><button class="chip on" data-bn="15">15 cards</button><button class="chip" data-bn="20">20 cards</button></div>
+        <p class="note" style="margin:8px 0 0">Play on a laptop or tablet at the front. One signer peeks at the card and signs it to everyone; the first team to buzz guesses. You tap ✓ or ✗. Buzz by tapping your team’s button or pressing its number key.</p></div>
       </div>
       <p style="margin:12px 0 6px">What’s on the card?</p>
       <div class="row" id="shows"><button class="chip on" data-show="both">🖼️ Picture and name</button><button class="chip" data-show="pic">🖼️ Picture only (harder)</button></div>
@@ -193,6 +211,13 @@ button { font: inherit; cursor: pointer; border: 0; }
       <ol class="board" id="ttBoard"></ol>
       <div class="row"><button class="btn" id="ttGo">▶ Start the round</button><button class="btn alt" id="ttEnd">End the game</button></div>
     </div>
+  </section>
+  <!-- Buzzer battle (Colleen 2026-11-23: "add a teams mode with a buzzer"; her picks: one signer, teams race; one shared screen; the teacher judges) -->
+  <section id="buzz" class="screen">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px"><button class="back" id="bzQuit">✕ End the game</button><span id="bzWhich" class="note" style="font-size:16px"></span></div>
+    <ol class="board bzboard" id="bzBoard"></ol>
+    <div class="panel bzstage" id="bzStage"></div>
+    <div class="bzbtns" id="bzBtns"></div>
   </section>
   <section id="final" class="screen">
     <div class="panel" style="text-align:center">
@@ -239,7 +264,7 @@ const readJ = (k, d) => { try { return JSON.parse(get(k) || 'null') || d; } catc
 let cardShow = get('ff-show') === 'pic' ? 'pic' : 'both', mode = 'solo', nT = 2, per = 1, R_TEAM = -1, names = readJ('ff-names', []), T = readJ('ff-teams', null);
 const saveT = () => put('ff-teams', JSON.stringify(T));
 function paintNames() { $('#tNames').innerHTML = TCOL.slice(0, nT).map((c, i) => `<label><span aria-hidden="true">${c[0]}</span><input class="tname" data-tn="${i}" value="${esc(names[i] || c[1])}" aria-label="Team ${i + 1} name" maxlength="24"></label>`).join(''); }
-function boardHtml(cur) { const rows = T.teams.map((t, i) => ({ t, i })).sort((a, b) => b.t.score - a.t.score);
+function boardHtml(cur, TT) { const rows = (TT || T.teams).map((t, i) => ({ t, i })).sort((a, b) => b.t.score - a.t.score);
   return rows.map(({ t, i }) => `<li class="${i === cur ? 'now' : ''}" style="background:${t.color}"><span aria-hidden="true">${t.em}</span>${esc(t.name)}<span class="rds">${t.rounds.length ? t.rounds.join(' + ') : ''}</span><span class="pts">${t.score}</span></li>`).join(''); }
 const turnTeam = () => T.turn % T.teams.length, turnsTotal = () => T.teams.length * T.per;
 function showTurn() { const i = turnTeam(), t = T.teams[i];
@@ -272,6 +297,7 @@ document.addEventListener('click', e => {
   const sh = e.target.closest('[data-show]'); if (sh && !sh.disabled) { cardShow = sh.dataset.show; put('ff-show', cardShow); paintShow(); }
   const md = e.target.closest('[data-mode]'); if (md) { mode = md.dataset.mode; put('ff-mode', mode); paintMode(); }
   const nt = e.target.closest('[data-nt]'); if (nt) { nT = +nt.dataset.nt; $$('#nTeams .chip').forEach(c => c.classList.toggle('on', c === nt)); paintNames(); }
+  const bn = e.target.closest('[data-bn]'); if (bn) { bzN = +bn.dataset.bn; $$('#bzN .chip').forEach(c => c.classList.toggle('on', c === bn)); }
   const pr = e.target.closest('[data-per]'); if (pr) { per = +pr.dataset.per; $$('#perTeam .chip').forEach(c => c.classList.toggle('on', c === pr)); }
   const t = e.target.closest('[data-t]'); if (t) { secs = +t.dataset.t; put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c === t)); }
 });
@@ -291,11 +317,11 @@ $('#mixGo').onclick = () => { const ids = mixPicked(); if (!ids.length) return; 
   L.forEach(d => d.words.forEach(w => { const k = String(w).toLowerCase(); if (!seen.has(k)) { seen.add(k); words.push(w); } }));
   deck = L.length === 1 ? L[0] : { id: 'mix:' + ids.slice().sort().join('+'), name: L.length === DECKS.length ? 'All decks mixed' : L.length <= 2 ? L.map(d => d.name).join(' + ') : 'Mix of ' + L.length + ' decks', emoji: '🔀', color: '#5B3FD6', words, imgs: Object.assign({}, ...L.map(x => x.imgs || {})) };
   openReady(); };
-function paintMode() { $$('#modes .chip').forEach(c => c.classList.toggle('on', c.dataset.mode === mode)); $('#teamSet').hidden = mode !== 'teams'; $('#go').textContent = mode === 'teams' ? '▶ Start the game' : '▶ Start'; if (mode === 'teams') paintNames(); }
+function paintMode() { $$('#modes .chip').forEach(c => c.classList.toggle('on', c.dataset.mode === mode)); $('#teamSet').hidden = mode === 'solo'; $('#perWrap').hidden = mode !== 'teams'; $('#bzWrap').hidden = mode !== 'buzz'; $('#go').textContent = mode === 'solo' ? '▶ Start' : '▶ Start the game'; if (mode !== 'solo') paintNames(); }
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); window.scrollTo(0, 0); }
 function openReady() {
   $('#rdName').textContent = (deck.emoji || '') + ' ' + deck.name; $('#rdCount').textContent = deck.words.length + ' cards';
-  $$('#times .chip').forEach(c => c.classList.toggle('on', +c.dataset.t === secs)); mode = get('ff-mode') === 'teams' ? 'teams' : 'solo'; paintMode(); paintShow(); $$('#snds .chip').forEach(c => c.classList.toggle('on', c.dataset.snd === goodSnd)); $$('#bads .chip').forEach(c => c.classList.toggle('on', c.dataset.bad === badSnd));
+  $$('#times .chip').forEach(c => c.classList.toggle('on', +c.dataset.t === secs)); mode = ['teams', 'buzz'].includes(get('ff-mode')) ? get('ff-mode') : 'solo'; paintMode(); paintShow(); $$('#snds .chip').forEach(c => c.classList.toggle('on', c.dataset.snd === goodSnd)); $$('#bads .chip').forEach(c => c.classList.toggle('on', c.dataset.bad === badSnd));
   $('#resume').hidden = !(T && !T.over && T.deckId === deck.id && T.turn > 0 && T.turn < T.teams.length * T.per);      /* a team game this phone didn't finish */
   show('ready');
 }
@@ -351,11 +377,58 @@ function bag(words) {      // shuffled, the cards this phone saw least recently 
   const mix = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   return mix(fresh).concat(old);
 }
-$('#go').onclick = () => { if (mode === 'teams') { newTeams(); showTurn(); } else { R_TEAM = -1; startRound(); } };
+$('#go').onclick = () => { if (mode === 'buzz') { bzStart(); return; } if (mode === 'teams') { newTeams(); showTurn(); } else { R_TEAM = -1; startRound(); } };
 $('#resume').onclick = () => showTurn();
 $('#ttGo').onclick = () => { R_TEAM = turnTeam(); startRound(); };
 $('#ttEnd').onclick = () => showFinal();
-$('#fnNew').onclick = () => { T.teams.forEach(t => { t.score = 0; t.rounds = []; }); T.turn = 0; T.over = false; T.deckId = deck.id; saveT(); showTurn(); };
+$('#fnNew').onclick = () => { if (B && B.over) { bzStart(B.teams); return; } T.teams.forEach(t => { t.score = 0; t.rounds = []; }); T.turn = 0; T.over = false; T.deckId = deck.id; saveT(); showTurn(); };
+/* ---------- Buzzer battle ---------- */
+let B = null, bzN = 15;
+const BUZZ = () => { tone(140, 0, .5, 'square', .14); tone(147, 0, .5, 'square', .12); tone(70, 0, .5, 'sawtooth', .08); };
+function bzStart(keepTeams) {
+  try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) {}
+  const only = cardShow === 'pic' && picCount() >= 5, words = deck.words.map(w => String(w).trim()).filter(w => w && (!only || picOf(w)));
+  const teams = keepTeams ? keepTeams.map(t => Object.assign({}, t, { score: 0, rounds: [] })) : TCOL.slice(0, nT).map((c, i) => ({ em: c[0], name: (names[i] || c[1]).trim() || c[1], color: c[2], score: 0, rounds: [] }));
+  B = { teams, only, list: bag(words), i: 0, n: Math.min(bzN, words.length), locked: new Set(), who: -1, state: 'open', log: [], over: false, last: '' };
+  show('buzz'); bzPaint(); }
+function bzCardHtml(w, big) { const pic = picOf(w); return `<div class="bzcard">${pic ? `<div class="bzpic" data-pic="${esc(pic)}" style="background-image:url('${esc(pic)}')"></div>` : ''}${B.only && !big ? '' : `<div class="bzname">${esc(w)}</div>`}</div>`; }
+function bzCut() { $$('#bzStage [data-pic]').forEach(el => cutout(el.dataset.pic).then(r => { if (r && el.isConnected) { el.style.backgroundImage = "url('" + r.src + "')"; el.classList.toggle('cut', !!r.cut); } })); }
+function bzPaint() {
+  if (!B) return; const w = B.list[B.i], st = $('#bzStage');
+  $('#bzWhich').textContent = (deck.emoji || '') + ' ' + deck.name + ' · card ' + Math.min(B.i + 1, B.n) + ' of ' + B.n;
+  $('#bzBoard').innerHTML = boardHtml(B.state === 'buzzed' ? B.who : -1, B.teams);
+  st.style.background = ''; st.style.color = '';
+  if (B.state === 'open') {
+    st.innerHTML = `<div><h2>🔔 Buzzers open!</h2><p style="margin:0 0 14px">Signer: press and <b>hold</b> 👀 to see the card (don’t let anyone see!), then sign it. No voices.</p>
+      <div class="row" style="justify-content:center"><button class="btn peek" id="bzPeek">👀 Hold to peek</button><button class="btn alt" id="bzSkip">🙈 Nobody? Show the answer</button></div>
+      ${B.locked.size ? `<p class="note" style="margin:12px 0 0">Locked out on this card: ${[...B.locked].map(k => esc(B.teams[k].name)).join(', ')}</p>` : ''}
+      <div id="bzPeekBox" hidden style="position:absolute;inset:0;background:#fff;display:grid;place-items:center;padding:16px">${bzCardHtml(w)}</div></div>`;
+    const pk = $('#bzPeek'), box = $('#bzPeekBox'), on = e => { e.preventDefault(); box.hidden = false; bzCut(); }, off = () => { box.hidden = true; };
+    pk.addEventListener('pointerdown', on); ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => pk.addEventListener(t, off)); box.addEventListener('pointerup', off);
+    $('#bzSkip').onclick = () => bzReveal(-1);
+  } else if (B.state === 'buzzed') { const t = B.teams[B.who];
+    st.style.background = t.color; st.style.color = '#fff';
+    st.innerHTML = `<div><h2>${t.em} ${esc(t.name)}!</h2><p class="bzbig" style="margin:0 0 16px">What’s the answer?</p><div class="row" style="justify-content:center"><button class="btn" id="bzYes" style="background:#fff;color:#0d7a47;box-shadow:0 5px 0 rgba(0,0,0,.25);font-size:26px">✓ Right</button><button class="btn" id="bzNo" style="background:#fff;color:#A3123A;box-shadow:0 5px 0 rgba(0,0,0,.25);font-size:26px">✗ Wrong</button></div></div>`;
+    $('#bzYes').onclick = () => bzReveal(B.who);
+    $('#bzNo').onclick = () => { SND.pass(); B.locked.add(B.who); B.who = -1; B.state = B.locked.size >= B.teams.length ? 'all' : 'open'; if (B.state === 'all') bzReveal(-1); else bzPaint(); };
+  } else if (B.state === 'reveal') {
+    const last = B.i + 1 >= B.n;
+    st.innerHTML = `<div style="width:100%">${bzCardHtml(w, true)}<p class="bzbig" style="margin:14px 0 12px">${B.last}</p><button class="btn" id="bzNext">${last ? '🏆 See who won' : 'Next card ›'}</button></div>`;
+    $('#bzNext').onclick = () => { if (last) return bzEnd(); B.i++; B.locked = new Set(); B.who = -1; B.state = 'open'; bzPaint(); };
+  }
+  bzCut();
+  $('#bzBtns').innerHTML = B.teams.map((t, k) => `<button data-buzz="${k}" style="background:${t.color}" ${B.state !== 'open' || B.locked.has(k) ? 'disabled' : ''}>${t.em} ${esc(t.name)}<small>tap or press ${k + 1}</small></button>`).join('');
+}
+function bzBuzz(k) { if (!B || B.state !== 'open' || B.locked.has(k) || !B.teams[k]) return; B.who = k; B.state = 'buzzed'; BUZZ(); buzz(120); bzPaint(); }
+function bzReveal(k) { const w = B.list[B.i]; if (k >= 0) { B.teams[k].score++; SND.good(); B.last = '+1 ' + B.teams[k].em + ' ' + esc(B.teams[k].name); } else { SND.pass(); B.last = 'No points this time.'; }
+  B.log.push([w, k >= 0]); B.state = 'reveal'; bzPaint(); }
+function bzEnd() { if (!B) return; B.over = true; const top = Math.max(...B.teams.map(t => t.score)), win = B.teams.filter(t => t.score === top);
+  const k = 'ff-seen:' + deck.id, seen = readJ(k, []).filter(w => !B.log.some(x => x[0] === w)); put(k, JSON.stringify(seen.concat(B.log.map(x => x[0])).slice(-400)));
+
+  $('#fnWin').textContent = win.length > 1 ? 'Tie! ' + win.map(t => t.name).join(' and ') : win[0].name + ' wins!'; $('#fnBoard').innerHTML = boardHtml(-1, B.teams); show('final'); try { SND.end(); } catch (e) {} }
+document.addEventListener('click', e => { const b = e.target.closest('[data-buzz]'); if (b && !b.disabled) bzBuzz(+b.dataset.buzz); });
+document.addEventListener('keydown', e => { if (B && !B.over && $('#buzz').classList.contains('on') && /^[1-6]$/.test(e.key)) bzBuzz(+e.key - 1); });
+$('#bzQuit').onclick = () => { if (B && B.log.length) bzEnd(); else { B = null; show('ready'); } };
 async function startRound() {
   try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) {}
   const only = cardShow === 'pic' && picCount() >= 5, words = deck.words.map(w => String(w).trim()).filter(w => w && (!only || picOf(w)));
