@@ -369,7 +369,10 @@ function cutout(url) {
   })();
   CUT.set(url, job); return job;
 }
-const picOf = w => { const m = deck && deck.imgs; const u = m && m[w]; return typeof u === 'string' && /^https:/.test(u) ? u : ''; };
+let ALLPICS = null;
+const picOf = w => { const m = deck && deck.imgs; let u = m && m[w];
+  if (!u) { if (!ALLPICS) { ALLPICS = {}; DECKS.forEach(d => Object.keys(d.imgs || {}).forEach(x => { const k = x.trim().toLowerCase().replace(/^the /, ''); if (!ALLPICS[k]) ALLPICS[k] = d.imgs[x]; })); } u = ALLPICS[String(w).trim().toLowerCase().replace(/^the /, '')]; }      /* the same character in another deck */
+  return typeof u === 'string' && /^https:/.test(u) ? u : ''; };
 function next() { if (!R) return; R.i++; if (R.i >= R.list.length) { R.list = R.list.concat(bag(R.list)); } const w = R.list[R.i]; const el = $('#word'), pic = picOf(w); el.className = R.only ? 'only' : ''; el.style.transform = ''; el.innerHTML = `<div class="pic${pic ? ' has' : ''}"${pic ? ` style="background-image:url('${esc(pic)}');visibility:hidden"` : ''}>${pic ? '' : esc(deck.emoji || '🃏')}</div><div class="txt"><span>${esc(w)}</span></div>`;
   if (pic) { const pe = el.querySelector('.pic'), me = R.i, put = r => { if (!R || R.i !== me || !pe.isConnected) return; if (r) { pe.style.backgroundImage = "url('" + r.src + "')"; pe.classList.toggle('cut', !!r.cut); } pe.style.visibility = ''; };
     cutout(pic).then(put); setTimeout(() => { if (pe.style.visibility) pe.style.visibility = ''; }, 900); }      /* wait up to 0.9 s for the cut-out, then show the picture anyway */ $('#credit').textContent = /wikimedia\.org/.test(pic) ? 'Picture: Wikipedia' : ''; el.style.display = ''; fit(); void el.offsetWidth; el.classList.add('fin');
