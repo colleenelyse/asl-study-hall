@@ -1299,8 +1299,8 @@ addEventListener('appinstalled', function () { window.__bip = null; var b = docu
 })();
 </script>
 <script>
-/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.522) */
-window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.522" };
+/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.523) */
+window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.523" };
 (function () {
   function run(ok, fail) {
     return new Proxy({}, { get: function (_, k) {
@@ -1462,6 +1462,9 @@ function boot() {
     if (window.__demo && window.__mobpic && S.set.mobPic) bgOk[S.set.mobPic] = window.__mobpic;
     if (d.needsJoin) return paintJoin();
     S.me = d.me; initSel(); applySkin(); { const g = escSaved(); const mg = mmSaved(); if (g && Date.now() - g.savedAt < 30 * 60000) chunkLoad('rooms').then(() => { go('escape'); escResume(); }, () => go('home')); else if (mg && Date.now() - mg.savedAt < 30 * 60000) chunkLoad('rooms').then(() => { go('manners'); mmResume(); }, () => go('home')); else if (partOn('house') && houseSavedCore()) chunkLoad('house').then(() => { go('house'); houseResume(); }, () => go('home')); else { go('home'); escrRejoin(); if (d.teacher) try { google.script.url.getLocation(loc => { const v = loc && loc.parameter && loc.parameter.view; if (/^(brsounds|picker|passboard|groups|seats|toasttest)$/.test(v || '')) go(v); }); } catch (e) {} } }      /* 4.61: a refresh mid-escape goes straight back into the game; 4.119 ?view=brsounds opens the Breach sounds page (asl.cool/colleen); 4.186 also ?view=picker, passboard, groups, seats; 4.187 ?view=toasttest (the Phaser test) */ setTimeout(pushCheck, 1200); if (d.teacher) setTimeout(() => chunkLoad('ls').catch(() => {}), 4000);      /* 4.286: Living Screensavers (teachers only) loads in the background, so its 🐠 chip and projector link work as before */ setTimeout(() => { if (!bdayAsk()) bdayMaybe(); setTimeout(() => cbdMaybe(), 2500); }, 700);
+    /* 4.523 (Colleen: "give them a link right on that pop up to fix that. make it easy"): the yellow banner on asl.cool/fingerspelling links to ASL Study with ?go=stk,
+       which opens the Fingerspelling & Numbers games that count for a Stacker, signed in, right away */
+    try { if (window.google && google.script && google.script.url) google.script.url.getLocation(loc => { const g = loc && loc.parameter && loc.parameter.go; if (g === 'stk' && !d.teacher) setTimeout(() => { try { ACT.stkchoose({ dataset: { num: '1' } }); } catch (e) {} }, 900); }); } catch (e) {}
     if (d.guestNew) setTimeout(guestHello, 600);      /* 4.436 guest copy: the welcome card, the first time */
     if (d.gifts && d.gifts.length) giftModal(d.gifts);
     const late = d => {      /* 4.502 these wait for api_bootMore (tests, feedback notes, the teacher's badges) */
