@@ -104,6 +104,7 @@ button { font: inherit; cursor: pointer; border: 0; }
 @keyframes pulse { 50% { transform: translateX(-50%) scale(1.15); } }
 #bar { position: absolute; left: 0; bottom: 0; height: 1.6vh; background: rgba(255,255,255,.55); width: 100%; transform-origin: left; }
 #score { z-index: 2; position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); font: 700 5vh Fredoka; }
+#quit.done { font-size: 3.4vh; padding: 1.2vh 2.4vw; background: rgba(0,0,0,.35); }
 #quit { z-index: 3; position: absolute; top: max(8px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); background: rgba(0,0,0,.25); color: #fff; border-radius: 12px; padding: 6px 12px; font-weight: 800; font-size: 14px; }
 #game.good { background: var(--good) !important; }
 #game.pass { background: var(--pass) !important; }
@@ -164,7 +165,7 @@ button { font: inherit; cursor: pointer; border: 0; }
       <div class="row" id="shows"><button class="chip on" data-show="both">🖼️ Picture and name</button><button class="chip" data-show="pic">🖼️ Picture only (harder)</button></div>
       <p class="note" id="showNote" style="margin:6px 0 0"></p>
       <p style="margin:12px 0 6px">How long is a round?</p>
-      <div class="row" id="times"><button class="chip" data-t="60">1 minute</button><button class="chip on" data-t="90">1½ minutes</button><button class="chip" data-t="120">2 minutes</button></div>
+      <div class="row" id="times"><button class="chip" data-t="60">1 minute</button><button class="chip on" data-t="90">1½ minutes</button><button class="chip" data-t="120">2 minutes</button><button class="chip" data-t="0">⏸ No timer</button></div>
       <ol class="steps">
         <li><span class="n">1</span><span>Turn your phone <b>sideways</b> and hold it on your forehead, screen facing your group.</span></li>
         <li><span class="n">2</span><span>Your group describes the word <b>in ASL only</b>. You guess out loud or in ASL.</span></li>
@@ -328,7 +329,7 @@ async function startRound() {
   try { const el = document.documentElement; if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' }); } catch (e) {}
   try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch (e) {}
   try { if (navigator.wakeLock) wake = await navigator.wakeLock.request('screen'); } catch (e) {}
-  const g = $('#game'); g.className = hasTilt ? 'on' : 'on taps'; g.style.background = deck.color || '#1B1340';
+  const g = $('#game'); g.className = hasTilt ? 'on' : 'on taps'; $('#quit').textContent = secs ? '✕ End' : '✓ Done'; $('#quit').classList.toggle('done', !secs); g.style.background = deck.color || '#1B1340';
   $('#taps').classList.toggle('on', !hasTilt); $('#word').textContent = ''; $('#clock').textContent = ''; $('#score').textContent = ''; $('#bar').style.transform = 'scaleX(1)';
   msg(hasTilt ? 'Put it on your forehead!' : 'Ready?', hasTilt ? 'Screen facing your group. Hold still…' : 'No tilt on this device: tap the buttons, or use the ↑ ↓ arrow keys.');
   if (!hasTilt) setTimeout(countdown, 1600);
@@ -356,10 +357,12 @@ function loop() {
     if (R.phase === 'play' && !R.busy) { if (!R.armed) { if (Math.abs(up) < .32 && now - R.shown > 250) R.armed = true; } else if (up < -.55) answer(true); else if (up > .55) answer(false); }
   }
   if (R.phase === 'play') {
+    if (!secs) { $('#clock').textContent = 'Card ' + (R.log.length + 1); $('#clock').classList.remove('low'); $('#bar').style.transform = 'scaleX(0)'; }      /* no timer (Colleen): cards until the holder taps Done; the top shows which card this is */
+    else {
     const left = Math.max(0, Math.ceil((R.end - now) / 1000)); if (left !== R.left) { R.left = left; if (left <= 5 && left > 0) SND.tick(); }
     $('#clock').textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); $('#clock').classList.toggle('low', left <= 10);
     $('#bar').style.transform = 'scaleX(' + Math.max(0, (R.end - now) / (secs * 1000)) + ')';
-    if (now >= R.end && !R.busy) return over();
+    if (now >= R.end && !R.busy) return over(); }
   }
 }
 function over() {
@@ -370,7 +373,7 @@ function over() {
 function finish() {
   const g = $('#game'); g.className = ''; $('#turn').classList.remove('on');
   try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {} try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) {} try { wake && wake.release(); } catch (e) {} wake = null;
-  const n = R.got.length; $('#dnScore').textContent = n + (n === 1 ? ' word' : ' words'); $('#dnDeck').textContent = (deck.emoji || '') + ' ' + deck.name + ' · ' + Math.round(secs / 60 * 10) / 10 + ' min';
+  const n = R.got.length; $('#dnScore').textContent = n + (n === 1 ? ' word' : ' words'); $('#dnDeck').textContent = (deck.emoji || '') + ' ' + deck.name + ' · ' + (secs ? Math.round(secs / 60 * 10) / 10 + ' min' : 'no timer');
   $('#dnEm').textContent = n >= 10 ? '🏆' : n >= 5 ? '🎉' : '👏';
   $('#dnList').innerHTML = R.log.length ? R.log.map(x => `<li class="${x[1] ? 'ok' : 'no'}">${picOf(x[0]) ? `<img src="${esc(picOf(x[0]))}" alt="">` : ''}${x[1] ? '✓' : '↷'} ${esc(x[0])}</li>`).join('') : '<li class="no">No cards this round.</li>';
   const tb = $('#dnBoard');
