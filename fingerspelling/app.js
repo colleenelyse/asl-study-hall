@@ -3002,6 +3002,19 @@ if (ONLY) {
 }
 window.addEventListener('hashchange', route);
 route();
+/* ASL Study 4.522 (Colleen, after Monica D: "this keeps happening to kids. we need to figure out how to fix this permanently"): on asl.cool, outside ASL Study
+   and not signed in through the phone app, practice here is NOT sent to ASL Study, so a Stacker never sees it. Say so at the top of the page. Only on asl.cool
+   (her classes' site): the TpT and phone-app editions never show it. */
+(function () { try {
+  if (EMBED || !/(^|\.)asl\.cool$/.test(location.hostname) || !/^\/fingerspelling/.test(location.pathname)) return;
+  if (typeof window.paLinked === 'function' && window.paLinked()) return;
+  if (sessionStorage.getItem('fsp-stk-warn') === 'x') return;
+  const b = document.createElement('div'); b.id = 'stkwarn'; b.setAttribute('role', 'note');
+  b.style.cssText = 'background:#FFF3C4;color:#3a2a00;border:3px solid #F2B705;border-radius:14px;padding:10px 14px;margin:10px auto;max-width:960px;display:flex;gap:10px;align-items:flex-start;font-weight:600;line-height:1.4';
+  b.innerHTML = '<span style="font-size:1.6rem" aria-hidden="true">⚠️</span><span style="flex:1">Practicing for a <b>Summative Stacker</b>? Practice on this page does <b>NOT</b> count. Open <b>ASL Study</b>, tap your Stacker card and use <b>▶ Number games that count</b> (or <b>▶ Practice now</b> for fingerspelling). <a href="https:' + '//asl.cool/study/" style="color:#7a4b00;font-weight:800">Open ASL Study ›</a></span><button type="button" aria-label="Hide this message" style="border:0;background:none;font-size:1.3rem;cursor:pointer;color:#3a2a00">×</button>';
+  b.querySelector('button').onclick = () => { b.remove(); try { sessionStorage.setItem('fsp-stk-warn', 'x'); } catch (e) {} };
+  const h = document.querySelector('header.top'); if (h && h.parentNode) h.parentNode.insertBefore(b, h.nextSibling); else document.body.insertBefore(b, document.body.firstChild);
+} catch (e) {} })();
 if (CFG.ga) { const s = document.createElement('script'); s.async = true; s.src = 'https:' + '//www.googletagmanager.com/gtag/js?id=' + CFG.ga; document.head.appendChild(s); window.dataLayer = window.dataLayer || []; window.gtag = function () { window.dataLayer.push(arguments); }; window.gtag('js', new Date()); window.gtag('config', CFG.ga, { send_page_view: false }); }
 window.FSP = { hand, S, BG, poolFor, letters, lookAlikes, blurSet, cardWords, reportLink, TL, AP, EY, eyChoices, MT, mtMake, mtNorm, mtTrue, LESSONS, LESSONS_FS, cur: () => R && R.list[R.i], round: () => R };      // for testing in the console
 })();

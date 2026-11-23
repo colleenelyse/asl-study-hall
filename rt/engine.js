@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.520';
+var VERSION = '4.522';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -12788,7 +12788,9 @@ function stackCheck_(p) {
         o.canvas = { link: opp.canvas, asg: a && a.name, points: a && a.points_possible, published: a && a.published, postManually: a && a.post_manually, found: !!u };
         if (u) { var sb = cvFetch_(c.base, '/api/v1/courses/' + c.course + '/assignments/' + c.asg + '/submissions/' + u.id); o.canvas.sub = sb && { score: sb.score, grade: sb.grade, state: sb.workflow_state, posted: sb.posted_at, graded: sb.graded_at, missing: sb.missing, late: sb.late, excused: sb.excused }; } } } catch (e) { o.canvasErr = e.message; }
     return o; }), canvasLast: parse_(PropertiesService.getScriptProperties().getProperty('canvasLast'), null),
-    opps: chOpps_().map(function (o) { return { id: o.id, title: o.title, skill: o.skill, due: o.due, canvas: !!o.canvas, sample: !!o.sample }; }) };
+    opps: chOpps_().map(function (o) { return { id: o.id, title: o.title, skill: o.skill, due: o.due, canvas: !!o.canvas, sample: !!o.sample, course: o.course || '', days: o.days || '', dayN: o.dayN || '' }; }) };
+  try { var st9 = static_(), sh9 = stuSheet_(); out.stu = {}; rows.forEach(function (w) { var em = str_(w.v[CHW.Email]).toLowerCase(), nm = str_(w.v[CHW.Name]); if (out.stu[nm]) return; var r9 = findRow_(sh9, em); if (!r9) return; var s9 = readStu_(sh9, r9);
+    out.stu[nm] = { cls: s9.Class, course: courseOf_(st9, s9.Class), chc: s9.Bests && s9.Bests.chc, chd: s9.Bests && s9.Bests.chd, last: s9['Last practice'] }; }); } catch (e) { out.stuErr = e.message; }      /* 4.522 her practice progress toward the next Numbers / Fingerspelling day, and her course (Monica D) */
   var folder = DriveApp.getFolderById(CAMS_EXPORT_FOLDER), it = folder.getFilesByName('stacker-check.json'); while (it.hasNext()) it.next().setTrashed(true);
   folder.createFile('stacker-check.json', JSON.stringify(out), 'application/json');
   return msg('Done: ' + rows.length + ' Summative Stacker row(s) for ' + rows.map(function (w) { return str_(w.v[CHW.Name]); }).filter(function (x, i, a) { return a.indexOf(x) === i; }).join(', ') + ' were copied to stacker-check.json in your "Sign Recordings for Avatar" Drive folder. You can close this page and tell Claude.');
