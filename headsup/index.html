@@ -6,14 +6,14 @@
 <meta name="theme-color" content="#1B1340">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Forehead Flash">
-<title>Forehead Flash</title>
+<meta name="apple-mobile-web-app-title" content="Who Do You Think You Are?">
+<title>Who Do You Think You Are?</title>
 <link rel="icon" type="image/png" href="../img/logo-512.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
-<!-- Forehead Flash (Colleen, 2026-11-23): "the heads up game/app for the phone that works with a tilt like the real game ... i want to be able to build and choose from
+<!-- Who Do You Think You Are? (renamed from Forehead Flash 2026-11-24; Colleen, 2026-11-23): "the heads up game/app for the phone that works with a tilt like the real game ... i want to be able to build and choose from
      categories that i create". Our own game and look. One student holds the phone on their forehead; the group describes the word in ASL (no voices); tilt DOWN = got it,
      tilt UP = pass. Decks come from /headsup/decks.json (the ones she makes in her editor), or starter.json until she saves her own. Nothing about students is saved anywhere. -->
 <style>
@@ -143,7 +143,7 @@ button { font: inherit; cursor: pointer; border: 0; }
 </head>
 <body>
 <div class="wrap">
-  <header class="top"><div class="logo" aria-hidden="true">🤟</div><div><h1>Forehead <span>Flash</span></h1><p class="sub">Phone on your forehead. Friends describe it in ASL. Tilt to answer.</p></div><a id="edit" href="/colleen/headsup" hidden style="margin-left:auto;background:var(--ink);color:#fff;border-radius:12px;padding:8px 12px;font-weight:800;text-decoration:none;white-space:nowrap">✏️ Edit decks</a></header>
+  <header class="top"><div class="logo" aria-hidden="true">🤟</div><div><h1>Who Do You<br><span>Think You Are?</span></h1><p class="sub">Phone on your forehead. Friends describe it in ASL. Tilt to answer.</p></div><a id="edit" href="/colleen/headsup" hidden style="margin-left:auto;background:var(--ink);color:#fff;border-radius:12px;padding:8px 12px;font-weight:800;text-decoration:none;white-space:nowrap">✏️ Edit decks</a></header>
 
   <!-- 1. pick a deck -->
   <section id="pick" class="screen on">
@@ -242,7 +242,7 @@ button { font: inherit; cursor: pointer; border: 0; }
 </div>
 
 <!-- 3. the game -->
-<div id="game" role="application" aria-label="Forehead Flash round">
+<div id="game" role="application" aria-label="Who Do You Think You Are? round">
   <button id="quit">✕ End</button>
   <div id="clock"></div><div id="score"></div>
   <div class="stage"><div id="word"></div><div id="msg"></div></div>
