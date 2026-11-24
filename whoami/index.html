@@ -98,6 +98,14 @@ button { font: inherit; cursor: pointer; border: 0; }
 .tname { font: 700 16px Nunito, sans-serif; border: 2px solid #E4DEF5; border-radius: 10px; padding: 7px 10px; width: 100%; }
 .tnames { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 8px 0 4px; }
 .tnames label { display: flex; gap: 6px; align-items: center; }
+.sgOpen { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--card); color: var(--ink); border: 3px dashed #CFC4F2; border-radius: 20px; padding: 14px 18px; margin-top: 14px; font-size: 17px; }
+.sgOpen span:first-child { font-size: 30px; } .sgOpen span:last-child { margin-left: auto; font: 700 30px/1 Fredoka, sans-serif; color: var(--muted); }
+.sgf input[type=text], .sgf textarea { display: block; width: 100%; margin-top: 6px; font: 600 19px Nunito, sans-serif; padding: 12px 14px; border: 2px solid #D9D0F5; border-radius: 14px; background: #fff; color: var(--ink); box-sizing: border-box; }
+.sgf textarea { resize: vertical; }
+.sgmsg { min-height: 1.4em; font-weight: 800; margin: 12px 0 6px; } .sgmsg.ok { color: #0A7A55; } .sgmsg.bad { color: #B3123E; }
+.minsc { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; cursor: text; }
+.minsc input { width: 4.2em; font: 800 17px Nunito, sans-serif; padding: 4px 6px; border: 2px solid #CFC4F2; border-radius: 10px; text-align: center; background: #fff; color: var(--ink); }
+.minsc.on input { border-color: var(--ink); }
 .mixl { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
 .mixl label { display: flex; align-items: center; gap: 10px; border-radius: 14px; padding: 10px 12px; background: #F7F3FF; cursor: pointer; border-left: 8px solid var(--c); }
 .mixl input { width: 24px; height: 24px; accent-color: var(--ink); flex: none; }
@@ -154,6 +162,7 @@ button { font: inherit; cursor: pointer; border: 0; }
   <section id="pick" class="screen on">
     <div class="rule"><span style="font-size:28px" aria-hidden="true">🤫</span><span><b>Voices off!</b> Your group describes the word in ASL: signs, fingerspelling, gestures, facial expressions. No talking, no mouthing the word.</span></div>
     <div id="decks" class="decks" aria-live="polite"><p class="note">Loading decks…</p></div>
+    <button class="sgOpen" id="sgOpen"><span aria-hidden="true">💡</span><span><b>Got an idea?</b> Suggest a new card, or a whole new category</span><span aria-hidden="true">›</span></button>
     <div class="homeTip" id="homeTip"><span style="font-size:30px" aria-hidden="true">📲</span><span><b>Best on a phone as an app:</b> <span id="homeHow"></span> It opens full screen, sideways, with nothing in the way.</span></div>
   </section>
 
@@ -166,6 +175,30 @@ button { font: inherit; cursor: pointer; border: 0; }
       <div class="row" style="margin-bottom:10px"><button class="chip" data-mixall="1">Tick all</button><button class="chip" data-mixall="0">Untick all</button></div>
       <div id="mixList" class="mixl"></div>
       <button class="btn wide" id="mixGo" style="margin-top:14px">Next ›</button>
+    </div>
+  </section>
+
+  <!-- students suggest cards and categories (Colleen 2026-11-24). Ideas go to her editor; nothing is added until she says so. No names are asked for. -->
+  <section id="suggest" class="screen">
+    <button class="back" data-go="pick">‹ All decks</button>
+    <div class="panel">
+      <h2 style="margin:0 0 4px;font-size:28px">💡 Suggest something new</h2>
+      <p class="note" style="margin:0 0 12px">Your teacher reads every idea before it goes into the game.</p>
+      <div class="row" id="sgKinds" style="margin-bottom:14px"><button class="chip on" data-sgk="card">🃏 A new card</button><button class="chip" data-sgk="deck">🗂️ A whole new category</button></div>
+      <div id="sgCard" class="sgf">
+        <label for="sgWord"><b>Who or what should be on the card?</b></label>
+        <input type="text" id="sgWord" maxlength="80" placeholder="For example: Moana" autocomplete="off">
+        <p style="margin:14px 0 6px"><b>Which categories should it go in?</b> <span class="note">Tick one or more.</span></p>
+        <div id="sgDecks" class="mixl"></div>
+      </div>
+      <div id="sgDeck" class="sgf" hidden>
+        <label for="sgName"><b>Name of the new category</b></label>
+        <input type="text" id="sgName" maxlength="50" placeholder="For example: Famous Dogs" autocomplete="off">
+        <label for="sgWords" style="margin-top:14px;display:block"><b>Cards for it</b> <span class="note">One per line, at least 3.</span></label>
+        <textarea id="sgWords" rows="7" placeholder="Lassie&#10;Scooby-Doo&#10;Clifford"></textarea>
+      </div>
+      <p id="sgMsg" class="sgmsg" role="status" aria-live="polite"></p>
+      <button class="btn wide" id="sgSend">Send my idea</button>
     </div>
   </section>
 
@@ -195,7 +228,7 @@ button { font: inherit; cursor: pointer; border: 0; }
       <p style="margin:12px 0 6px">“Pass” sound <span class="note">(tap one to hear it)</span></p>
       <div class="row" id="bads"><button class="chip" data-bad="buzz">🚫 Buzz</button><button class="chip" data-bad="womp">🎺 Womp womp</button><button class="chip" data-bad="boing">🌀 Boing</button><button class="chip" data-bad="whoosh">💨 Whoosh</button><button class="chip" data-bad="bonk">🔨 Bonk</button><button class="chip" data-bad="off">🔇 Off</button></div>
       <p style="margin:12px 0 6px">How long is a round?</p>
-      <div class="row" id="times"><button class="chip" data-t="60">1 minute</button><button class="chip on" data-t="90">1½ minutes</button><button class="chip" data-t="120">2 minutes</button><button class="chip" data-t="0">⏸ No timer</button></div>
+      <div class="row" id="times"><button class="chip" data-t="60">1 minute</button><button class="chip on" data-t="90">1½ minutes</button><button class="chip" data-t="120">2 minutes</button><button class="chip" data-t="0">⏸ No timer</button><label class="chip minsc" id="minsC">⌨️ <input type="number" id="minsIn" min="0.5" max="30" step="0.5" inputmode="decimal" placeholder="Other" aria-label="Type your own number of minutes"> minutes</label></div>
       <ol class="steps">
         <li><span class="n">1</span><span>Turn your phone <b>sideways</b> and hold it on your forehead, screen facing your group.</span></li>
         <li><span class="n">2</span><span>Your group describes the word <b>in ASL only</b>. You guess out loud or in ASL.</span></li>
@@ -263,7 +296,7 @@ const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAl
 const COLORS = ['#3D5AFE', '#E91E63', '#00A884', '#7C4DFF', '#FF6D00', '#0091EA', '#C51162', '#2E7D32'];
 const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let DECKS = [], deck = null, secs = +(get('ff-secs') || 90);
+let DECKS = [], deck = null, secs = +(get('ff-secs') || 90); if (!(secs >= 0 && secs <= 1800)) secs = 90;
 /* teams (Colleen 2026-11-23: "add a teams scoreboard so groups can take turns"). T is saved on this phone, so a closed tab doesn't lose the scores. */
 const TCOL = [['🔴', 'Red Team', '#E53935'], ['🔵', 'Blue Team', '#1E63E9'], ['🟢', 'Green Team', '#14A35B'], ['🟣', 'Purple Team', '#7C3AED'], ['🟠', 'Orange Team', '#F26B0F'], ['🟡', 'Gold Team', '#C99700']];
 const readJ = (k, d) => { try { return JSON.parse(get(k) || 'null') || d; } catch (e) { return d; } };
@@ -305,8 +338,12 @@ document.addEventListener('click', e => {
   const nt = e.target.closest('[data-nt]'); if (nt) { nT = +nt.dataset.nt; $$('#nTeams .chip').forEach(c => c.classList.toggle('on', c === nt)); paintNames(); }
   const bn = e.target.closest('[data-bn]'); if (bn) { bzN = +bn.dataset.bn; $$('#bzN .chip').forEach(c => c.classList.toggle('on', c === bn)); }
   const pr = e.target.closest('[data-per]'); if (pr) { per = +pr.dataset.per; $$('#perTeam .chip').forEach(c => c.classList.toggle('on', c === pr)); }
-  const t = e.target.closest('[data-t]'); if (t) { secs = +t.dataset.t; put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c === t)); }
+  const t = e.target.closest('[data-t]'); if (t) { secs = +t.dataset.t; put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c === t)); $('#minsIn').value = ''; }
 });
+/* her own number of minutes (Colleen 2026-11-24: "people can type in a number of minutes for the timer"): half a minute to 30 minutes */
+function paintMins() { const own = ![0, 60, 90, 120].includes(secs); $('#minsC').classList.toggle('on', own); if (own && document.activeElement !== $('#minsIn')) $('#minsIn').value = String(Math.round(secs / 30) / 2); }
+$('#minsIn').addEventListener('input', () => { const v = parseFloat($('#minsIn').value); if (!(v >= .5 && v <= 30)) return; secs = Math.round(v * 60); put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c.id === 'minsC')); });
+$('#minsIn').addEventListener('change', () => { const v = parseFloat($('#minsIn').value); if (!(v >= .5 && v <= 30)) { $('#minsIn').value = v > 30 ? '30' : ''; if (v > 30) { secs = 1800; put('ff-secs', '1800'); } } paintMins(); });
 document.addEventListener('input', e => { if (e.target.dataset && e.target.dataset.tn !== undefined) { names[+e.target.dataset.tn] = e.target.value; put('ff-names', JSON.stringify(names)); } });
 const picCount = () => deck.words.filter(w => picOf(w)).length;
 function paintShow() { const n = picCount(), b = document.querySelector('[data-show="pic"]'); b.disabled = n < 5; b.style.opacity = n < 5 ? .45 : 1; if (n < 5 && cardShow === 'pic') cardShow = 'both';
@@ -324,10 +361,33 @@ $('#mixGo').onclick = () => { const ids = mixPicked(); if (!ids.length) return; 
   deck = L.length === 1 ? L[0] : { id: 'mix:' + ids.slice().sort().join('+'), name: L.length === DECKS.length ? 'All decks mixed' : L.length <= 2 ? L.map(d => d.name).join(' + ') : 'Mix of ' + L.length + ' decks', emoji: '🔀', color: '#5B3FD6', words, imgs: Object.assign({}, ...L.map(x => x.imgs || {})) };
   openReady(); };
 function paintMode() { $$('#modes .chip').forEach(c => c.classList.toggle('on', c.dataset.mode === mode)); $('#teamSet').hidden = mode === 'solo'; $('#perWrap').hidden = mode !== 'teams'; $('#bzWrap').hidden = mode !== 'buzz'; $('#go').textContent = mode === 'solo' ? '▶ Start' : '▶ Start the game'; if (mode !== 'solo') paintNames(); }
+/* ---- suggestions ---- */
+let sgKind = 'card';
+function openSuggest() { $('#sgDecks').innerHTML = DECKS.map((d, i) => `<label style="--c:${esc(d.color || COLORS[i % COLORS.length])}"><input type="checkbox" value="${esc(d.id)}"><span class="em2" aria-hidden="true">${esc(d.emoji || '🃏')}</span><span>${esc(d.name)}</span></label>`).join('');
+  $('#sgMsg').textContent = ''; $('#sgMsg').className = 'sgmsg'; show('suggest'); }
+function sgPaint() { $$('#sgKinds .chip').forEach(c => c.classList.toggle('on', c.dataset.sgk === sgKind)); $('#sgCard').hidden = sgKind !== 'card'; $('#sgDeck').hidden = sgKind !== 'deck'; $('#sgMsg').textContent = ''; }
+const sgSay = (t, ok) => { const m = $('#sgMsg'); m.textContent = t; m.className = 'sgmsg ' + (ok ? 'ok' : 'bad'); };
+$('#sgOpen').onclick = openSuggest;
+document.addEventListener('click', e => { const k = e.target.closest('[data-sgk]'); if (k) { sgKind = k.dataset.sgk; sgPaint(); } });
+$('#sgSend').onclick = async () => { let body;
+  if (sgKind === 'card') { const word = $('#sgWord').value.trim(), ids = $$('#sgDecks input').filter(c => c.checked).map(c => c.value);
+    if (!word) return sgSay('Type who or what should be on the card.'); if (!ids.length) return sgSay('Tick at least one category.');
+    const k = word.toLowerCase().replace(/^the /, ''), has = DECKS.filter(d => ids.includes(d.id) && d.words.some(w => String(w).toLowerCase().replace(/^the /, '') === k));
+    const want = ids.filter(id => !has.some(d => d.id === id)); if (!want.length) return sgSay('“' + word + '” is already in ' + has.map(d => d.name).join(' and ') + '. Try another idea!');
+    body = { kind: 'card', word, decks: want }; }
+  else { const name = $('#sgName').value.trim(), words = $('#sgWords').value.split('\n').map(x => x.trim()).filter(Boolean);
+    if (!name) return sgSay('Give the new category a name.'); if (words.length < 3) return sgSay('Add at least 3 cards, one per line.'); body = { kind: 'deck', name, words }; }
+  const b = $('#sgSend'); b.disabled = true; b.textContent = 'Sending…';
+  try { const r = await fetch('suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.error || 'That did not send.');
+    if (sgKind === 'card') { $('#sgWord').value = ''; $$('#sgDecks input').forEach(c => { c.checked = false; }); sgSay('✓ Sent! Your teacher will see “' + body.word + '”. Got another idea? Type it above.', true); $('#sgWord').focus(); }
+    else { $('#sgName').value = ''; $('#sgWords').value = ''; sgSay('✓ Sent! Your teacher will see your “' + body.name + '” category.', true); } }
+  catch (e) { sgSay(navigator.onLine === false ? 'No internet right now. Try again when you are back online.' : e.message + ' Try again.'); }
+  b.disabled = false; b.textContent = 'Send my idea'; };
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id)); window.scrollTo(0, 0); }
 function openReady() {
   $('#rdName').textContent = (deck.emoji || '') + ' ' + deck.name; $('#rdCount').textContent = deck.words.length + ' cards';
-  $$('#times .chip').forEach(c => c.classList.toggle('on', +c.dataset.t === secs)); mode = ['teams', 'buzz'].includes(get('ff-mode')) ? get('ff-mode') : 'solo'; paintMode(); paintShow(); $$('#snds .chip').forEach(c => c.classList.toggle('on', c.dataset.snd === goodSnd)); $$('#bads .chip').forEach(c => c.classList.toggle('on', c.dataset.bad === badSnd));
+  $$('#times .chip').forEach(c => c.classList.toggle('on', c.dataset.t !== undefined && +c.dataset.t === secs)); paintMins(); mode = ['teams', 'buzz'].includes(get('ff-mode')) ? get('ff-mode') : 'solo'; paintMode(); paintShow(); $$('#snds .chip').forEach(c => c.classList.toggle('on', c.dataset.snd === goodSnd)); $$('#bads .chip').forEach(c => c.classList.toggle('on', c.dataset.bad === badSnd));
   $('#resume').hidden = !(T && !T.over && T.deckId === deck.id && T.turn > 0 && T.turn < T.teams.length * T.per);      /* a team game this phone didn't finish */
   show('ready');
 }
@@ -495,8 +555,8 @@ function cutout(url) {
 }
 let ALLPICS = null;
 const picOf = w => { const m = deck && deck.imgs; let u = m && m[w];
-  if (!u) { if (!ALLPICS) { ALLPICS = {}; DECKS.forEach(d => Object.keys(d.imgs || {}).forEach(x => { const k = x.trim().toLowerCase().replace(/^the /, ''); if (!ALLPICS[k]) ALLPICS[k] = d.imgs[x]; })); } u = ALLPICS[String(w).trim().toLowerCase().replace(/^the /, '')]; }      /* the same character in another deck */
-  return typeof u === 'string' && /^https:/.test(u) ? u : ''; };
+  if (!u && !(deck && (deck.apart || []).includes(w))) {      /* 2026-11-24 a card she keeps apart (a show poster) never borrows the character's picture */ if (!ALLPICS) { ALLPICS = {}; DECKS.forEach(d => Object.keys(d.imgs || {}).forEach(x => { if ((d.apart || []).includes(x)) return; const k = x.trim().toLowerCase().replace(/^the /, ''); if (!ALLPICS[k]) ALLPICS[k] = d.imgs[x]; })); } u = ALLPICS[String(w).trim().toLowerCase().replace(/^the /, '')]; }      /* the same character in another deck */
+  return typeof u === 'string' && (/^https:/.test(u) || /^data:image\//.test(u)) ? u : ''; };      /* 2026-11-24 small pictures packed into the link count too */
 function next() { if (!R) return; R.i++; if (R.i >= R.list.length) { R.list = R.list.concat(bag(R.list)); } const w = R.list[R.i]; const el = $('#word'), pic = picOf(w); el.className = R.only ? 'only' : ''; el.style.transform = ''; el.innerHTML = `<div class="pic${pic ? ' has' : ''}"${pic ? ` style="background-image:url('${esc(pic)}');visibility:hidden"` : ''}>${pic ? '' : esc(deck.emoji || '🃏')}</div><div class="txt"><span>${esc(w)}</span></div>`;
   if (pic) { const pe = el.querySelector('.pic'), me = R.i, put = r => { if (!R || R.i !== me || !pe.isConnected) return; if (r) { pe.style.backgroundImage = "url('" + r.src + "')"; pe.classList.toggle('cut', !!r.cut); } pe.style.visibility = ''; };
     cutout(pic).then(put); setTimeout(() => { if (pe.style.visibility) pe.style.visibility = ''; }, 900); }      /* wait up to 0.9 s for the cut-out, then show the picture anyway */ $('#credit').textContent = /wikimedia\.org/.test(pic) ? 'Picture: Wikipedia' : ''; el.style.display = ''; fit(); void el.offsetWidth; el.classList.add('fin');

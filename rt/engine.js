@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.524';
+var VERSION = '4.525';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -12765,6 +12765,15 @@ function stackCheck_(p) {
   var whos = who.split(',').map(function (x) { return x.trim(); }).filter(String);
   var rows = chWorkRows_().filter(function (w) { var nm = str_(w.v[CHW.Name]).toLowerCase().replace(/\s+/g, ' '); return whos.some(function (x) { return nm.indexOf(x) === 0; }); });
   if (!rows.length) return msg('No Summative Stacker rows for "' + p.name + '".');
+  if (str_(p.addday)) {      /* 4.525 (Colleen: "luke c got a message telling him to vary his word length for it to count ... give him credit for what he just did"; she chose
+       "give him today as a day"): adds one practice day to a Stacker row whose test is NOT finished yet (days= only works on finished tests). The total is worked out when the test is finished. */
+    return msg(lock_(function () { var w = chWorkRows_().filter(function (x) { return str_(x.v[CHW.Opportunity]) === str_(p.opp) && str_(x.v[CHW.Name]).toLowerCase().replace(/\s+/g, ' ').indexOf(whos[0]) === 0; })[0];
+      if (!w) return 'That Stacker row was not found.'; var day = str_(p.addday); if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return 'addday= needs a date like 2026-11-24.';
+      var d = chDays_(w); if (d.indexOf(day) >= 0) return str_(w.v[CHW.Name]) + ' already has ' + day + ' as a practice day (' + d.length + ' days).';
+      d.push(day); d.sort(); chSet_(w, 'Practice days', d.join(', '));
+      chSet_(w, 'Teacher note', (str_(w.v[CHW['Teacher note']]) ? str_(w.v[CHW['Teacher note']]) + ' ' : '') + day + ' practice day given by hand (Colleen, ' + Utilities.formatDate(new Date(), 'America/Chicago', 'yyyy-MM-dd') + ').');
+      return 'Done: ' + str_(w.v[CHW.Name]) + ' now has ' + d.length + ' practice days (' + d.join(', ') + '). Status: ' + str_(w.v[CHW.Status]) + '.'; }));
+  }
   if (str_(p.days)) {      /* 4.518 her "give her practice days by hand" (Caylee K): days= practice days given, the total worked out again, and Canvas updated when it still has the old score the app sent */
     return msg(lock_(function () { var w = chWorkRows_().filter(function (x) { return str_(x.v[CHW.Opportunity]) === str_(p.opp) && str_(x.v[CHW.Name]).toLowerCase().replace(/\s+/g, ' ').indexOf(whos[0]) === 0; })[0];
       if (!w) return 'That Stacker row was not found.'; var t = chTest_(w), opp = chOpp_(w.v[CHW.Opportunity]); if (!t || !t.done || str_(w.v[CHW.Total]) === '') return 'That test is not finished yet.';
