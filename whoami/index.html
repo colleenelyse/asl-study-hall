@@ -35,6 +35,11 @@ button { font: inherit; cursor: pointer; border: 0; }
 .deck { position: relative; text-align: left; color: #fff; border-radius: 22px; padding: 16px 16px 14px; min-height: 150px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 6px 0 rgba(0,0,0,.22); transition: transform .12s; overflow: hidden; }
 .deck:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(0,0,0,.22); }
 .deck .em { font-size: 44px; line-height: 1; }
+.deck.mixbig { grid-column: 1 / -1; min-height: 0; flex-direction: row; align-items: center; justify-content: flex-start; gap: 18px; padding: 22px 24px; background: linear-gradient(135deg, #1B1340, #7C4DFF); }
+.deck.mixbig .em { font-size: 64px; }
+.deck.mixbig b { font: 700 clamp(28px, 6vw, 40px)/1.05 Fredoka, sans-serif; }
+.deck.mixbig small { font-size: clamp(15px, 3.4vw, 19px); opacity: .92; }
+.deck.mixbig .go { margin-left: auto; font: 700 54px/1 Fredoka, sans-serif; opacity: .85; }
 .deck b { font: 600 22px/1.15 Fredoka, sans-serif; }
 .deck small { opacity: .85; font-weight: 800; }
 .deck::after { content: ''; position: absolute; right: -30px; top: -30px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.12); }
@@ -286,8 +291,8 @@ async function loadDecks() {
 function paintDecks() {
   const box = $('#decks');
   if (!DECKS.length) { box.innerHTML = '<p class="note">No decks yet.</p>'; return; }
-  box.innerHTML = DECKS.map((d, i) => `<button class="deck" data-i="${i}" style="background:${esc(/^#[0-9a-f]{6}$/i.test(d.color || '') ? d.color : COLORS[i % COLORS.length])}"><span class="em">${esc(d.emoji || '🃏')}</span><span><b>${esc(d.name || 'Deck')}</b><br><small>${d.words.length} cards</small></span></button>`).join('')
-    + (DECKS.length > 1 ? `<button class="deck" data-i="mix" style="background:linear-gradient(135deg,#1B1340,#7C4DFF)"><span class="em">🔀</span><span><b>Mix your own</b><br><small>Pick the decks you know</small></span></button>` : '');
+  box.innerHTML = (DECKS.length > 1 ? `<button class="deck mixbig" data-i="mix"><span class="em">🔀</span><span><b>Mix your own</b><br><small>Tick the decks you know and play them all together</small></span><span class="go" aria-hidden="true">›</span></button>` : '')      /* Colleen 2026-11-24: "the mix categories option to be the first option people see ... make this option bigger" */
+    + DECKS.map((d, i) => `<button class="deck" data-i="${i}" style="background:${esc(/^#[0-9a-f]{6}$/i.test(d.color || '') ? d.color : COLORS[i % COLORS.length])}"><span class="em">${esc(d.emoji || '🃏')}</span><span><b>${esc(d.name || 'Deck')}</b><br><small>${d.words.length} cards</small></span></button>`).join('');
 }
 document.addEventListener('click', e => {
   const d = e.target.closest('.deck'); if (d) { const i = d.dataset.i; if (i === 'mix') { openMix(); return; } deck = DECKS[+i]; openReady(); return; }
