@@ -256,6 +256,7 @@ tr.lowrow td { background: var(--chip); border-bottom: 1px solid var(--line); }
 .pjbox { border-left: 3px solid var(--line); padding: 2px 0 2px 10px; margin: 0 0 6px; }
 .fe-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}.fe-prev{position:sticky;top:12px;border:2px dashed var(--line);border-radius:14px;padding:10px 14px;max-height:85vh;overflow:auto;background:var(--bg)}.fe-prevtag{font-weight:700;font-size:13px;color:var(--soft);margin-bottom:6px}.fe-prev h1{font-size:22px}.fe-site{border-top:1px solid var(--line);padding:8px 0}.fe-sec input[type=text]{width:100%;box-sizing:border-box}.fe-site .row input[type=text]{width:auto}
 @media (max-width:820px){.fe-wrap{grid-template-columns:1fr}.fe-prev{position:static;max-height:none}}
+.gob{margin-top:14px;border:2px dashed var(--line);border-radius:12px;padding:10px 14px}.gob summary{cursor:pointer}.gob-warn{background:var(--warn-soft);border:1px solid var(--warn);border-radius:10px;padding:8px 12px;margin:10px 0;font-size:14px}.gob-steps{margin:6px 0 10px;padding-left:22px}.gob-steps li{margin:6px 0}.gob-steps input{width:100%;box-sizing:border-box;margin-top:4px}
 .sitegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
 .site { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; text-decoration: none; color: var(--ink); background: var(--card); }
 .site:hover { border-color: var(--brand); }
@@ -530,7 +531,7 @@ body.quickmode #toolBox>.card{border:0;padding:0;box-shadow:none;background:tran
    plan how they'll use resource time, and list upcoming tests. The teacher sees everyone.
    A Google Sheet + Apps Script web app. How to set it up: SETUP.md. */
 
-var VERSION = '2.92'
+var VERSION = '2.93'
 var SHOW_BENCH_ = false;          // 2.20: IEP benchmarks hidden for now (Colleen: focus on goals); the tabs keep their data;
 
 // Data tabs and their columns. Dates are stored as text (yyyy-mm-dd).
@@ -4993,6 +4994,40 @@ function api_planProject(testId, text, spread) {          // 2.53: spread = how 
   var sp = Math.round(+spread || 0); if (sp >= 1 && sp < days.length) days = days.slice(-sp);
   return { steps: planBasic_(text, days, p.due), how: 'basic', note: '' };          // 2.86: the Decoder and the Tests page never use AI; ✨ Assignment Breakdown (api_aiBreakdown) is the AI tool
 }
+// 2.93: 🧙 goblin.tools: the student broke the project down on goblin.tools (Magic ToDo) and pasted the steps back. No AI is called from here:
+// the app only reads the pasted list (one step a line; bullets, numbers, checkboxes and indents are fine) and spreads it over the days.
+function pastedSteps_(text, root, what) {          // what = the project's name: a FIRST line that starts with it is the project, not a step          // root = the line the student copied to goblin.tools (its Copy puts it first): not a step
+  var key = function (x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }, seen = {}, top = [], all = [];
+  if (root) { seen[key(root).slice(0, 60)] = 1; seen[key(String(root).replace(/,?\s*due\b.*$/i, '')).slice(0, 60)] = 1; }
+  var first = true, wk = key(what);
+  String(text || '').replace(/\r/g, '').split('\n').forEach(function (raw) {
+    if (!raw.trim()) return;
+    var ind = /^[\t ]{2,}/.test(raw), l = raw.replace(/\s+/g, ' ').trim();
+    l = l.replace(/^(\[[ xX✓]?\]|[☐☑✅✔️◻️⬜]+)\s*/, '').replace(/^[\-\*•·▪◦○●■□➢➤→]+\s*/, '').replace(/^(\[[ xX✓]?\]|[☐☑✅✔️◻️⬜]+)\s*/, '').replace(/^(\(?[0-9]{1,2}[\.\)]|\(?[a-hA-H][\.\)])\s+/, '').trim();
+    l = l.replace(/\s*\(due [^)]*\)\s*$/i, '').trim();          // goblin.tools adds “(due …)” to a step with a deadline: our dates win
+    if (l.replace(/[^A-Za-z0-9]/g, '').length < 3) return;
+    var k = key(l).slice(0, 60), wasFirst = first; first = false;
+    if (wasFirst && wk.length >= 4 && key(l).indexOf(wk) === 0) return;
+    if (seen[k]) return; seen[k] = 1;
+    var x = { step: l.slice(0, 150) }; all.push(x); if (!ind) top.push(x);
+  });
+  return all.length <= 19 || top.length < 3 ? all.slice(0, 19) : top.slice(0, 19);          // too many? the main steps (not the sub-steps)
+}
+function api_planSteps(testId, text, spread, root) {
+  var email = need_();
+  if (!settings_().f.planner) throw new Error('Your teacher has turned off the project planner.');
+  var t = rows_('Tests').filter(function (r) { return String(r[0]) === String(testId) && low_(r[1]) === email; })[0];
+  if (!t) throw new Error('That project is not on your list.');
+  var due = day_(t[3]), today = today_();
+  if (due <= today) throw new Error('This project is due today or already past due. Change its date first.');
+  var steps = pastedSteps_(String(text || '').slice(0, 20000), clean_(root, 200), String(t[4] || '')).filter(function (x) { return !/^(turn|hand) (it )?in\b/i.test(x.step); });
+  if (!steps.length) throw new Error('No steps found. Paste the steps from goblin.tools, one step on each line.');
+  var days = planDays_(today, due), sp = Math.round(+spread || 0); if (sp >= 1 && sp < days.length) days = days.slice(-sp);
+  var n = steps.length;
+  steps.forEach(function (x, k) { x.due = days[Math.min(days.length - 1, Math.floor(k * days.length / n))]; });
+  steps[n - 1].due = days[days.length - 1];
+  return { steps: steps.concat([{ step: 'Turn it in', due: due }]), how: 'goblin', note: '' };
+}
 // work days from tomorrow through the day before it's due (Mon–Fri); the due day itself is for turning it in
 function planDays_(today, due) { var d = weekdays_(addDays_(today, 1), addDays_(due, -1)); return d.length ? d : [today]; }
 
@@ -8380,7 +8415,7 @@ function pjtHtml() {
     '' + pasteHow('part') + '<textarea id="pjText" style="min-height:150px;margin-top:8px" placeholder="Paste the directions and the rubric here (Ctrl + V)" oninput="PJT.text=this.value">' + esc(PJT.text) + '</textarea>' +
     '<div class="row" style="margin-top:6px;gap:8px"><label class="btn small" style="cursor:pointer">📄 Use a PDF instead<input type="file" accept=".pdf,.txt,application/pdf,text/plain" style="display:none" onchange="pjtFile(this.files[0])"></label><span class="small" id="pjtSt"></span></div>' +
     '<div class="row" style="margin-top:10px"><button class="btn" onclick="decGo()">🔍 Decode it</button><span class="small">See what it needs and how it’s graded before you plan.</span></div><div id="decBox">' + decHtml() + '</div>' +
-    '<div class="row" style="margin-top:10px"><button class="btn primary" id="pjtGo" onclick="pjtGo()"' + (PJT.busy ? ' disabled' : '') + '>' + (PJT.busy ? 'Making your plan…' : 'Make my plan') + '</button><span class="small">You can change every step and date before you save it. It shows on Today with a countdown, and you get a reminder before each step.</span></div>';
+    '<div class="row" style="margin-top:10px"><button class="btn primary" id="pjtGo" onclick="pjtGo()"' + (PJT.busy ? ' disabled' : '') + '>' + (PJT.busy ? 'Making your plan…' : 'Make my plan') + '</button><span class="small">You can change every step and date before you save it. It shows on Today with a countdown, and you get a reminder before each step.</span></div>' + gobHtml();
 }
 var PDFJS = 'https:' + '/' + '/cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
 function pdfLib(cb, bad) {
@@ -8416,6 +8451,50 @@ function pjtGo() {
       toolLog('Project helper', p.what + ' (' + r.steps.length + ' steps, due ' + p.date + ')');
       var dec = p.dec || decodeText(p.text); call('api_saveDecoded', t.id, dec).then(function (m) { D.decoded = m; if (VIEW === 'tests') drawTests(); }).catch(function () {});
       PJT = { cls: '', what: '', date: '', text: '', busy: false, spread: '', dec: null }; go('tests'); toast('Here’s your plan. Check each step and date, then click Save steps.');
+    });
+  }).catch(function (e) { PJT.busy = false; toolDraw(); oops(e); });
+}
+
+/* 2.93: 🧙 goblin.tools (free, no API): copy one line about the project, break it down on goblin.tools' Magic ToDo, paste the steps back.
+   Only the project line is copied (the student sees it and can change it). The app never talks to goblin.tools itself. */
+var GOB_URL = 'https:' + '/' + '/goblin.tools/ToDo';
+function gobLine() {
+  var cls = PJT.cls ? String(PJT.cls).replace(/\s*·.*$/, '') : '', prod = PJT.dec && PJT.dec.product ? PJT.dec.product : '';
+  return ((PJT.what || 'My project') + (prod && (PJT.what || '').toLowerCase().indexOf(prod.toLowerCase()) < 0 ? ' (' + prod + ')' : '') + (cls ? ' for ' + cls : '') + (PJT.date ? ', due ' + fmtDay(PJT.date) : '')).slice(0, 200);
+}
+function gobHtml() {
+  return '<details class="gob"' + (PJT.gobOpen ? ' open' : '') + ' ontoggle="PJT.gobOpen=this.open"><summary><b>🧙 Or break it down with goblin.tools</b> <span class="small" style="display:inline">(a free website: you copy, it makes the steps, you paste them back)</span></summary>' +
+    '<div class="gob-warn">⚠️ goblin.tools is not part of Resource Check-In. It uses AI, and what you paste there goes to it. Only the line below is copied: <b>never put your name, your grades or anything about yourself there.</b></div>' +
+    '<ol class="gob-steps"><li><b>Check the line</b> (fill in the project name and due date above first):<input type="text" id="gobL" maxlength="200" value="' + esc(PJT.gobLine || gobLine()) + '" oninput="PJT.gobLine=this.value"></li>' +
+    '<li><button class="btn small primary" onclick="gobOpen()">📋 Copy it and open goblin.tools</button></li>' +
+    '<li>On goblin.tools: paste it in the box (Ctrl + V) and add it. Press the <b>🪄 magic wand</b> next to it to break it into steps. Not small enough? Press the wand on a step to break that one down too.</li>' +
+    '<li>Under the list, press the <b>export</b> button (the share icon), then <b>Copy to clipboard</b>. Come back here and paste below (Ctrl + V). Its first line, your project, is skipped.</li></ol>' +
+    '<textarea id="gobT" style="min-height:110px" placeholder="Paste the steps from goblin.tools here, one step on each line" oninput="PJT.gobText=this.value">' + esc(PJT.gobText || '') + '</textarea>' +
+    '<div class="row" style="margin-top:8px"><button class="btn primary" onclick="gobGo()"' + (PJT.busy ? ' disabled' : '') + '>🧙 Make my plan from these steps</button><span class="small">Each step gets a date before ' + (PJT.date ? fmtDay(PJT.date) : 'the due date') + ' (spread like you picked above). You can change any of them before you save.</span></div></details>';
+}
+function gobKeep() { if ($('pjC')) PJT.cls = $('pjC').value; if ($('pjW')) PJT.what = $('pjW').value.trim(); if ($('pjD')) PJT.date = $('pjD').value; if ($('pjText')) PJT.text = $('pjText').value; if ($('pjS')) PJT.spread = $('pjS').value; }
+function gobOpen() {
+  gobKeep();
+  if (!PJT.what) return alert('Type the project’s name first.'); if (!PJT.date) return alert('Pick the due date first.');
+  var el = $('gobL'), line = (el && el.value.trim()) || gobLine(); PJT.gobLine = line;
+  var copied = function (ok) { toast(ok ? 'Copied! On goblin.tools, press Ctrl + V.' : 'Select the line and press Ctrl + C, then paste it on goblin.tools.'); };
+  try { navigator.clipboard.writeText(line).then(function () { copied(true); }, function () { if (el) el.select(); copied(false); }); } catch (e) { if (el) el.select(); copied(false); }
+  window.open(GOB_URL, '_blank', 'noopener');
+  toolLog('goblin.tools', PJT.what, true);
+}
+function gobGo() {
+  gobKeep(); var p = PJT; p.gobText = $('gobT') ? $('gobT').value : p.gobText || '';
+  if (!p.what) return alert('Type the project’s name.'); if (!p.date) return alert('Pick the due date.'); if (p.date <= B.today) return alert('Pick a due date after today.');
+  if (p.gobText.trim().length < 6) return alert('Paste the steps from goblin.tools first.');
+  p.busy = true; toolDraw();
+  var before = (D.tests || []).map(function (t) { return t.id; });
+  call('api_saveTest', { cls: p.cls, type: 'Project', what: p.what, date: p.date }).then(function (d) {
+    D = d; var t = D.tests.filter(function (x) { return before.indexOf(x.id) < 0; })[0]; if (!t) throw new Error('The project didn’t save. Try again.');
+    return call('api_planSteps', t.id, p.gobText, p.spread, p.gobLine || gobLine()).then(function (r) {
+      PJ = { id: t.id, steps: r.steps.map(function (s) { return { step: s.step, due: s.due, done: false }; }), made: r.how, note: r.note };
+      toolLog('Project helper', p.what + ' (goblin.tools, ' + r.steps.length + ' steps, due ' + p.date + ')');
+      if (p.text && p.text.trim().length >= 20) { var dec = p.dec || decodeText(p.text); call('api_saveDecoded', t.id, dec).then(function (m) { D.decoded = m; if (VIEW === 'tests') drawTests(); }).catch(function () {}); }
+      PJT = { cls: '', what: '', date: '', text: '', busy: false, spread: '', dec: null }; go('tests'); toast('Here are your steps with dates. Check them, then click Save steps.');
     });
   }).catch(function (e) { PJT.busy = false; toolDraw(); oops(e); });
 }
@@ -10264,7 +10343,7 @@ var PJ = null;          // { id, steps } while editing
 function stepsBox(t) {
   var st = (D.steps || {})[t.id] || [];
   if (PJ && PJ.id === t.id) return '<div class="pjbox"><b>Steps for ' + esc(t.what) + '</b> <span class="small" style="display:inline">(due ' + fmtDay(t.date) + ')</span>' +
-    (PJ.made ? '<p class="small" style="margin:4px 0">' + (PJ.made === 'ai' ? '✨ Made from your directions by the AI helper.' : PJ.made === 'study' ? '📚 Your study plan.' : 'Made from your directions.') + ' Check each step and date: change, add or delete any, then <b>Save steps</b>.' + (PJ.note ? ' ' + esc(PJ.note) : '') + '</p>' : '') + PJ.steps.map(function (x, k) {
+    (PJ.made ? '<p class="small" style="margin:4px 0">' + (PJ.made === 'ai' ? '✨ Made from your directions by the AI helper.' : PJ.made === 'study' ? '📚 Your study plan.' : PJ.made === 'goblin' ? '🧙 Your steps from goblin.tools, with a date for each.' : 'Made from your directions.') + ' Check each step and date: change, add or delete any, then <b>Save steps</b>.' + (PJ.note ? ' ' + esc(PJ.note) : '') + '</p>' : '') + PJ.steps.map(function (x, k) {
       return '<div class="row" style="margin:4px 0;gap:6px"><input type="text" class="grow" maxlength="150" placeholder="Step (Find 3 sources)" value="' + esc(x.step) + '" oninput="PJ.steps[' + k + '].step=this.value">' +
         '<input type="date" style="max-width:160px" value="' + esc(x.due) + '" max="' + t.date + '" oninput="PJ.steps[' + k + '].due=this.value"><button class="btn link danger" onclick="PJ.steps.splice(' + k + ',1);drawTests()">✕</button></div>';
     }).join('') + '<div class="row" style="margin-top:6px"><button class="btn small" onclick="PJ.steps.push({step:\'\',due:\'\',done:false});drawTests()">+ Add a step</button><button class="btn primary small" onclick="pjSave()">Save steps</button><button class="btn link" onclick="PJ=null;drawTests()">Cancel</button></div></div>';
