@@ -58,21 +58,22 @@ button { font: inherit; cursor: pointer; border: 0; }
 /* the game: full screen, one strong color, words big enough to read across a group */
 #game { position: fixed; inset: 0; z-index: 10; display: none; color: #fff; background: var(--ink); overflow: hidden; user-select: none; -webkit-user-select: none; }
 #game.on { display: block; }
-#game .stage { position: absolute; inset: 0; display: grid; place-items: center; padding: 6vh 5vw; text-align: center; }
+#game .stage { position: absolute; inset: 0; display: grid; place-items: center; padding: 10vh 2vw 3vh; text-align: center; }
 #game .stage { perspective: 900px; }
 /* the card: it leans with the phone as the student tilts, then flips away down (got it) or up (pass), and the next one flips in (Colleen: "uses the tilt of the phone to flip the cards") */
-#word { display: flex; align-items: stretch; gap: 3vw; width: 92vw; height: 76vh; text-shadow: 0 .06em 0 rgba(0,0,0,.25); padding: 3vh; border-radius: 4vh; background: rgba(255,255,255,.14); box-shadow: 0 1.4vh 0 rgba(0,0,0,.18); transform-origin: 50% 50%; transition: transform .07s linear; backface-visibility: hidden; }
+#word { display: flex; align-items: stretch; gap: 2.4vw; width: 96vw; height: 84vh; text-shadow: 0 .06em 0 rgba(0,0,0,.25); padding: 3vh; border-radius: 4vh; background: rgba(255,255,255,.14); box-shadow: 0 1.4vh 0 rgba(0,0,0,.18); transform-origin: 50% 50%; transition: transform .07s linear; backface-visibility: hidden; }
 /* a picture of the person or character, for the group (Colleen: "an image on each ... as realistic as possible": real photos and portraits from Wikipedia) */
 /* every card the same (Colleen: "image on the left and the text on the right. the text should be the priority for space use") */
-#word .pic { flex: 0 0 28%; border-radius: 2.6vh; background: rgba(255,255,255,.18) 50% 20% / cover no-repeat; box-shadow: 0 1vh 0 rgba(0,0,0,.2); display: grid; place-items: center; font-size: 16vh; }
+#word .pic { flex: 0 0 auto; align-self: center; border-radius: 2.6vh; background: rgba(255,255,255,.18) 50% 20% / cover no-repeat; box-shadow: 0 1vh 0 rgba(0,0,0,.2); display: grid; place-items: center; font-size: 16vh; }
 #word .pic.has { background-color: #fff; }
 #word .pic.cut { background-color: transparent; background-size: contain; background-position: 50% 50%; box-shadow: none; filter: drop-shadow(0 1vh 0 rgba(0,0,0,.18)); }
 .res li img.cut { background: transparent; object-fit: contain; }
-#word .txt { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; text-align: center; font: 700 12vw/1.04 Fredoka, sans-serif; overflow: hidden; }
+#word .txt { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; text-align: center; font: 700 12vw/1.02 Fredoka, sans-serif; overflow: hidden; }
+@media (orientation: portrait) { #word { flex-direction: column; } }      /* a phone held tall (laptop buttons, or rotation lock): picture on top, name below */
 #word .txt span { display: block; max-width: 100%; overflow-wrap: normal; word-break: normal; hyphens: none; }
 /* picture only (Colleen: "a picture only mode to challenge students without words") */
 #word.only { width: min(92vw, 66vh); }
-#game.taps #word { height: 62vh; margin-bottom: 12vh; }      /* laptops: room for the Pass / Got it buttons */
+#game.taps #word { height: 68vh; margin-bottom: 12vh; }      /* laptops: room for the Pass / Got it buttons */
 #game.taps #word.only { width: min(92vw, 54vh); }
 #word.only .pic { flex: 1; }
 #word.only .txt { display: none; }
@@ -445,7 +446,19 @@ async function startRound() {
 };
 function msg(t, small) { $('#msg').innerHTML = esc(t) + (small ? '<small>' + esc(small) + '</small>' : ''); $('#msg').style.display = t ? '' : 'none'; }
 function countdown() { if (!R || R.phase !== 'hold') return; R.phase = 'count'; let n = 3; const step = () => { if (!R || R.phase !== 'count') return; if (n) { msg(String(n)); SND.tick(); n--; setTimeout(step, 800); } else { msg(''); SND.go(); R.phase = 'play'; R.end = Date.now() + secs * 1000; next(); } }; step(); }
-function fit() { const t = $('#word .txt'), sp = t && t.firstChild; if (!sp || $('#word').classList.contains('only')) return; let s = 12; t.style.fontSize = s + 'vw'; for (let k = 0; k < 40 && (sp.scrollWidth > t.clientWidth || sp.offsetHeight > t.clientHeight); k++) { s *= .93; t.style.fontSize = s + 'vw'; } }      /* the name as big as it fits, never broken mid-word */
+/* Colleen: "space isn't being maximized. for short names/titles, there is a lot of negative space ... make the font and image as large as possible".
+   The picture is a square as big as the card allows; the name is made as large as fits (it grows, not only shrinks). If a long name would end up small,
+   the picture steps down so the words stay big (the text is the priority). */
+function fit() {
+  const card = $('#word'), t = $('#word .txt'), sp = t && t.firstChild, pic = $('#word .pic'); if (!sp || !pic) return;
+  const cs = getComputedStyle(card), tall = cs.flexDirection === 'column', iw = card.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = card.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  if (card.classList.contains('only')) { const side = Math.min(iw, ih); pic.style.width = pic.style.height = side + 'px'; pic.style.fontSize = side * .5 + 'px'; return; }
+  const gap = parseFloat(cs.columnGap || cs.gap) || 0, best = side => { pic.style.width = pic.style.height = side + 'px'; pic.style.fontSize = side * .5 + 'px';
+    let lo = 8, hi = Math.min(ih, iw) * .9; for (let k = 0; k < 14; k++) { const m = (lo + hi) / 2; t.style.fontSize = m + 'px'; if (sp.scrollWidth <= t.clientWidth && sp.offsetHeight <= t.clientHeight) lo = m; else hi = m; } return lo; };
+  const full = tall ? Math.min(iw, ih * .55) : Math.min(ih, iw * .5), good = (tall ? ih : ih) * .2;
+  let pick = null; for (const f of [1, .82, .66, .5]) { const fs = best(full * f); if (!pick || fs > pick.fs) pick = { f, fs }; if (fs >= good) { pick = { f, fs }; break; } }
+  best(full * pick.f); t.style.fontSize = pick.fs + 'px';
+}
 /* white backgrounds out (Colleen 2026-11-23: "make images without transparent backgrounds be transparent"): a picture whose edges are mostly plain white gets that
    white (only the white touching the edges) made see-through; a picture that is already transparent, or a photo with a real background, stays as it is.
    Pictures from other sites go through asl.cool/flash/img so the browser may read them. Results are kept for the visit. */
@@ -531,6 +544,7 @@ $('#tGot').onclick = () => answer(true); $('#tPass').onclick = () => answer(fals
 document.addEventListener('keydown', e => { if (!R) return; if (R.phase === 'hold' && (e.key === 'Enter' || e.key === ' ')) countdown(); if (e.key === 'ArrowDown') answer(true); if (e.key === 'ArrowUp') answer(false); });
 document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && R && navigator.wakeLock) try { wake = await navigator.wakeLock.request('screen'); } catch (e) {} });
 loadDecks();
+window.addEventListener('resize', () => { if (R && R.phase === 'play' && !R.busy) fit(); });      /* turning the phone refits the card */
 /* Android/Chrome: a real Install button in the tip */
 let instEv = null; window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; const how = $('#homeHow'); if (how) { how.innerHTML = '<button class="btn" id="instBtn" style="padding:8px 16px;font-size:17px">📲 Install the app</button>'; $('#homeTip').classList.add('on'); $('#instBtn').onclick = async () => { instEv.prompt(); try { await instEv.userChoice; } catch (x) {} instEv = null; $('#homeTip').classList.remove('on'); }; } });
 window.addEventListener('appinstalled', () => { $('#homeTip').classList.remove('on'); });
