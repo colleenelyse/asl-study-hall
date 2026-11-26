@@ -1,7 +1,7 @@
 /* Grade Calculator home-screen app (2026-11-25, Colleen: "add this as an app option that adds nicely to a home screen on asl.cool/apps").
    The page: the network first (so every change shows up right away), the saved copy only when there is no Wi-Fi. Icons: saved copy first.
    Sign-in and saving go to script.google.com and are never touched here. Change VER to replace everything. */
-const VER = 'gc-1', SHELL = ['./', 'manifest.json', 'icon-192.png', 'icon-512.png'];
+const VER = 'gc-2', SHELL = ['./', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VER).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('gc-') && k !== VER).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
