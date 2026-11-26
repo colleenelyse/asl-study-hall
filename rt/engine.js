@@ -9,7 +9,7 @@ import { SpreadsheetApp, CacheService, PropertiesService, LockService, Session, 
  * then choose ASL Study > Set up or repair this sheet.
  */
 
-var VERSION = '4.525';
+var VERSION = '4.526';
 /* What this edition includes. The trial edition leaves out Sign of the Day (an ASL feature) and the A to Z letters:
    students pick any avatar from the teacher's avatar folder, or upload their own picture for the teacher to approve.
    The code for both stays, so Colleen's own build and the older tests can still switch them on. */
@@ -553,6 +553,7 @@ var FEATURES = [
   ['family', 'Family Tree', 'Practice', 'Students build their family (real or made up) with photos, the sign for each relationship and details to present in ASL, shown ten ways: tree, pedigree, family chart, fan, photo wall, poster, two sides, bubble web, printable worksheet (4.293). Photos are shrunk and saved in the tree on the Family Trees tab.'],
   ['convo', 'Conversation Studio', 'Practice', 'Students record one role of a scripted conversation, one turn at a time, video only (4.339); later the teacher pairs any two students into a video-call conversation. Scripts are on the Conversation Scripts and Conversation Turns tabs.'],
   ['switch', 'Syntax Switch', 'Practice', 'A visual ASL grammar game (4.338): students move, discard and change English word tiles into an ASL sentence (Stage 1: ME/MY, YOU/YOUR, YOU\'RE). Check names each real mistake once. Sentences are on the Syntax Switch tab.'],
+  ['mysets', 'My Card Sets', 'Practice', 'Students make their own decks for Who Do You Think You Are? (asl.cool/whoami) and play them from their own link (4.526). Only the student can play a set; the teacher sees every set in her asl.cool editor (Students\' sets) and can make one a new deck or add its cards to a deck. Saved on the Card Sets tab.'],
   ['fuzzy', 'Fuzzy Crossing', 'Practice', 'A solo logic puzzle (4.289): little fuzzy creatures that differ by color, eyes, feet and hat must cross by a rule. The rule is signed (her color GIFs when the units have them, else the 3D hand); some levels hide the rule and Gatekeepers nod or shake their heads. 12 levels, new creatures every time. Pays like the other skill games (a few Tokens and Treats).'],
   ['islesolo', 'Treasure Island (solo)', 'Practice', 'Students answer for shovels and dig their own island for treasure, with Gold Rushes, in 5 minutes.'],
   ['house', 'The Silent House', 'Practice', 'A vocabulary escape room: every lock is a sign challenge, missed signs come back as whispers until they are right twice, and the answers count toward mastery.'],
@@ -1982,7 +1983,7 @@ function sizesPage_() {
   var rows = tabs.map(function (t) { return '<tr><td>' + h(t.n) + (t.hidden ? ' <small>(hidden)</small>' : '') + '</td><td>' + fmt(t.used) + '</td><td>' + fmt(t.rows) + '</td><td>' + fmt(t.usedC) + ' / ' + fmt(t.cols) + '</td><td><b>' + fmt(t.cells) + '</b></td><td>' + (Math.round(t.cells / tot * 1000) / 10) + '%</td></tr>'; }).join('');
   return HtmlService.createHtmlOutput('<div style="font:16px/1.45 system-ui,sans-serif;max-width:900px;margin:0 auto;padding:20px"><h1 style="margin:0 0 6px">📏 Sheet sizes</h1><p style="margin:0 0 12px;color:#555">' + tabs.length + ' tabs · <b>' + fmt(tot) + '</b> cells in all (Google stops a spreadsheet at 10,000,000). Rows used = the last row with something in it; rows in the tab includes empty rows at the bottom.</p><div style="overflow-x:auto"><table><tr><th>Tab</th><th>Rows used</th><th>Rows in the tab</th><th>Columns used / in the tab</th><th>Cells</th><th>Share</th></tr>' + rows + '</table></div><p style="color:#555">Send Claude a screenshot of this page.</p></div><style>table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;padding:6px 8px;text-align:right;white-space:nowrap}td:first-child,th:first-child{text-align:left;white-space:normal}</style>').setTitle('Sheet sizes').setFaviconUrl('https:' + '/' + '/asl.cool/img/logo-64.png'); }
 /* 4.69 (speed): the bigger games are their own files, fetched by the app the first time a student opens one */
-var CHUNKS = ['chal', 'convo', 'switch', 'family', 'exam', 'logos', 'wall', 'asst', 'spin', 'whos', 'fuzzy', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia', 'ls'];      // 4.286 Living Screensavers (teachers only)      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
+var CHUNKS = ['cards', 'chal', 'convo', 'switch', 'family', 'exam', 'logos', 'wall', 'asst', 'spin', 'whos', 'fuzzy', 'sea', 'breach', 'isle', 'train', 'rooms', 'case', 'mob', 'teach', 'house', 'vault', 'party', 'fly', 'munch', 'wagon', 'pawtopia', 'ls'];      // 4.286 Living Screensavers (teachers only)      // 4.193 Sign Munchers      // 4.187 the Phaser test (Neon Flying Toasters)      // 4.136 Dinner Party      // 4.123: the carnival and doll music moved to the site (audio/music/), so the app is small again
 function api_chunk(name) {
   if (CHUNKS.indexOf(String(name)) < 0) throw new Error('No such part of the app: ' + name);
   return { v: VERSION, html: HtmlService.createHtmlOutputFromFile('chunk_' + name).getContent() };
@@ -12889,6 +12890,76 @@ function api_todoSeen(auth, ids) {
   });
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
+/* ───── 4.526 MY CARD SETS (Colleen 2026-11-25: "i want students who are logged in to be able to make and save their own sets and they should be available for the
+   teacher to incorporate into the publicly available sets or to compare and add them to an existing set"). Her picks: made here in ASL Study (signed in), private
+   to the student until she adds them; her asl.cool editor can make one a new deck, compare it with a deck, and keep the students' pictures.
+   The Card Sets tab holds every set (made the first time). Each save also goes to asl.cool (csSend_), from this server only, with this app's secret
+   (Script Properties csSecret; asl.cool keeps its SHA-256 from the first send). Sent: the set, the student's short name ("Ava R") and class name, never the email.
+   The student plays it at asl.cool/whoami/?set=<ID> (a long random ID). App settings switch: 'mysets'. ───── */
+var CS_TAB = 'Card Sets';
+var CS_HEAD = ['ID', 'Email', 'Name', 'Class', 'Set name', 'Emoji', 'Cards', 'Pictures', 'Made', 'Changed', 'Sent to the game'];
+var CS_MAX_SETS = 20, CS_MIN = 5, CS_MAX = 300, CS_URL = 'https:' + '/' + '/asl.cool/whoami/set';
+function csTab_() { return ss_().getSheetByName(CS_TAB) || ensureTab_(CS_TAB, CS_HEAD, [250, 190, 120, 140, 180, 60, 420, 300, 140, 140, 140]).sheet; }
+function csRows_() { var sh = ss_().getSheetByName(CS_TAB); return sh ? rows_(sh, 2, CS_HEAD.length) : []; }
+function csParse_(x, d) { try { var v = JSON.parse(str_(x) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
+function csPublic_(r) { return { id: str_(r[0]), name: str_(r[4]), emoji: str_(r[5]), words: csParse_(r[6], []), imgs: csParse_(r[7], {}), at: isDate_(r[9]) ? r[9].getTime() : 0, sent: !!str_(r[10]) }; }
+function csSecret_() { var p = PropertiesService.getScriptProperties(), k = p.getProperty('csSecret'); if (!k) { k = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, ''); p.setProperty('csSecret', k); } return k; }
+/** Clean a set from the page: name, emoji, 5-300 different cards, picture links only for its cards. Throws a plain-words error. */
+function csClean_(p) {
+  p = p || {}; var t = function (x, m) { return str_(x).replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, m); };
+  var name = t(p.name, 50); if (!name) throw new Error('Give your set a name.');
+  var seen = {}, words = (Array.isArray(p.words) ? p.words : String(p.words || '').split('\n')).map(function (w) { return t(w, 60); })
+    .filter(function (w) { var k = w.toLowerCase(); if (!w || seen[k]) return false; seen[k] = 1; return true; });
+  if (words.length < CS_MIN) throw new Error('Add at least ' + CS_MIN + ' cards (one per line).');
+  if (words.length > CS_MAX) throw new Error('A set can have up to ' + CS_MAX + ' cards. Make a second set for the rest.');
+  var src = p.imgs && typeof p.imgs === 'object' ? p.imgs : {}, imgs = {};
+  words.forEach(function (w) { var u = str_(src[w]); if (/^https:\/\/[^\s"'<>]{8,2000}$/.test(u)) imgs[w] = u; });
+  var cj = JSON.stringify(words), ij = JSON.stringify(imgs);
+  if (cj.length > 45000) throw new Error('That set is too long. Make a second set for some of the cards.');
+  if (ij.length > 45000) throw new Error('Too many long picture links. Take a few pictures off, or use shorter links.');
+  return { name: name, emoji: t(p.emoji, 12) || '🃏', words: words, imgs: imgs, cj: cj, ij: ij };
+}
+/** Send one set to asl.cool (or take it away). True when asl.cool said yes. Never throws. */
+function csSend_(o) {
+  try { o.s = csSecret_(); var r = UrlFetchApp.fetch(CS_URL, { method: 'post', contentType: 'application/json', payload: JSON.stringify(o), muteHttpExceptions: true }); return r.getResponseCode() === 200; } catch (e) { return false; }
+}
+function csWho_(auth) {
+  var id = who_(auth); if (!id) throw new Error('Your sign-in ran out. Reload the page.');
+  needFeat_('mysets', 'My Card Sets');
+  var st = static_(), sh0 = stuSheet_(), row = findRow_(sh0, id.key), o = row ? readStu_(sh0, row) : null, teacher = isTeacher_();
+  if (!o && !teacher) throw new Error('Join the app first.');
+  return { key: id.key, name: o ? str_(o.Name) : 'Teacher', cls: o ? clsName_(st, o.Class) : '' };
+}
+function csMine_(key) { return csRows_().filter(function (r) { return str_(r[1]).toLowerCase() === key && str_(r[0]); }).map(csPublic_).sort(function (a, b) { return b.at - a.at; }); }
+function api_csMine(auth) { var me = csWho_(auth); return wire_({ sets: csMine_(me.key), max: CS_MAX_SETS, min: CS_MIN, most: CS_MAX }); }
+function api_csSave(auth, p) {
+  var me = csWho_(auth), c = csClean_(p), want = str_(p && p.id).replace(/[^a-z0-9]/gi, '');
+  var id = lock_(function () {
+    var sh = csTab_(), rows = rows_(sh, 2, 2), now = new Date(), at = -1, mine = 0;
+    rows.forEach(function (r, i) { if (str_(r[1]).toLowerCase() === me.key) { mine++; if (want && str_(r[0]) === want) at = i; } });
+    if (at >= 0) { sh.getRange(at + 2, 3, 1, 8).setValues([[me.name, me.cls, c.name, c.emoji, c.cj, c.ij, sh.getRange(at + 2, 9).getValue(), now]]); return want; }
+    if (mine >= CS_MAX_SETS) throw new Error('You have ' + CS_MAX_SETS + ' sets. Delete one to make another.');
+    var nid = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '').slice(0, 32);
+    sh.appendRow([nid, me.key, me.name, me.cls, c.name, c.emoji, c.cj, c.ij, now, now, '']); return nid;
+  });
+  var ok = csSend_({ id: id, name: c.name, emoji: c.emoji, words: c.words, imgs: c.imgs, by: fbShort_(me.name), cls: me.cls });
+  csMark_(id, ok);
+  return wire_({ id: id, sent: ok, sets: csMine_(me.key) });
+}
+function csMark_(id, ok) { try { var sh = csTab_(), rows = rows_(sh, 2, 1); for (var i = 0; i < rows.length; i++) if (str_(rows[i][0]) === id) { sh.getRange(i + 2, 11).setValue(ok ? new Date() : ''); return; } } catch (e) {} }
+/** Send a saved set again (when asl.cool did not answer the first time). */
+function api_csResend(auth, id) {
+  var me = csWho_(auth); id = str_(id); var x = csMine_(me.key).filter(function (s) { return s.id === id; })[0]; if (!x) throw new Error('That set is gone.');
+  var ok = csSend_({ id: id, name: x.name, emoji: x.emoji, words: x.words, imgs: x.imgs, by: fbShort_(me.name), cls: me.cls }); csMark_(id, ok);
+  if (!ok) throw new Error('The game isn’t answering. Try again in a minute.');
+  return wire_({ sent: true, sets: csMine_(me.key) });
+}
+function api_csDelete(auth, id) {
+  var me = csWho_(auth); id = str_(id);
+  lock_(function () { var sh = csTab_(), rows = rows_(sh, 2, 2); for (var i = rows.length - 1; i >= 0; i--) if (str_(rows[i][0]) === id && str_(rows[i][1]).toLowerCase() === me.key) sh.deleteRow(i + 2); });
+  csSend_({ id: id, del: true });
+  return wire_({ sets: csMine_(me.key) });
+}
 
 /* The built-in word descriptions (made by dev/make-defs-gs.py from fingerspelling-site/defs.js; do not edit here).
    Set up or repair copies them into the Description column of the word tabs, only where a cell is empty. */
@@ -15783,4 +15854,4 @@ function fillAllGroups_() {
 }
 
 export function __setStatic(x) { STATIC_ = x; }
-export const API = { api_appClaim, api_appSays, api_appSettings, api_appSettingsSave, api_appSignIn, api_appUse, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_asstVote, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootMore, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_cbdSeen, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signDup, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainCheer, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
+export const API = { api_appClaim, api_appSays, api_appSettings, api_appSettingsSave, api_appSignIn, api_appUse, api_arcadeBoard, api_arcadeName, api_arcadeScore, api_asstDone, api_asstExcuse, api_asstMove, api_asstPlace, api_asstRemove, api_asstVote, api_award, api_awardUndo, api_bdaySeen, api_board, api_boards, api_bootMore, api_bootstrap, api_brSoundsSave, api_breachBox, api_breachMove, api_breachNote, api_breachTool, api_breachTry, api_breachVote, api_buddyBuy, api_buddyWear, api_buy, api_camSampAssign, api_camSampBad, api_camSampItem, api_camSampList, api_camSamples, api_caseAccuse, api_caseClue, api_caseMark, api_caseRace, api_caseRead, api_cbdSeen, api_chunk, api_classNames, api_claw, api_clawEarn, api_clawGrab, api_clawStart, api_csDelete, api_csMine, api_csResend, api_csSave, api_dash, api_dashCodes, api_dashNotes, api_dashStudent, api_dayReport, api_equip, api_escBoard, api_escScore, api_escrGate, api_escrGive, api_escrNote, api_escrReplay, api_escrRisk, api_escrSearch, api_escrTry, api_escrUse, api_feed, api_focusConfig, api_focusLive, api_focusStart, api_focusStop, api_fsCompare, api_fsEmail, api_fsLists, api_fsMine, api_fsResults, api_fsRound, api_fsStats, api_fsWords, api_gifMiss, api_gift, api_giftLog, api_giftUndo, api_give, api_guestReset, api_guestVisit, api_isleBank, api_isleBoard, api_isleDig, api_isleScore, api_isleTap, api_join, api_learnSizeSave, api_liveAct, api_liveBanks, api_liveBoard, api_liveBonus, api_liveBonusOpts, api_liveClaim, api_liveControl, api_liveHost, api_liveJoin, api_liveLate, api_liveLateSet, api_livePing, api_logoBoard, api_logoSave, api_ls, api_media, api_micTest, api_mobAnswer, api_mobBoard, api_mobChallenge, api_mobPoll, api_mobRule, api_mobSolo, api_myLevel, api_passboard, api_photoRemove, api_photoSave, api_photos, api_picDecide, api_picQueue, api_picUpload, api_pics, api_pool, api_prizeAction, api_prizes, api_problemSpots, api_pronounBank, api_pushAnswer, api_pushCheck, api_pushControl, api_pushList, api_pushSend, api_qResults, api_qResultsSave, api_quickView, api_quietReport, api_quietStart, api_quietStop, api_report, api_reportEmail, api_reportSign, api_reports, api_roster, api_saveSets, api_sayitSave, api_seaColor, api_seaFire, api_seaGive, api_seaPace, api_seaPlace, api_seaVote, api_seatLayoutDel, api_seatLayoutSave, api_seatLayouts, api_seating, api_seatingSave, api_setBirthday, api_setRice, api_signDup, api_signStar, api_skillRound, api_spinCall, api_spinSolve, api_spinSpin, api_submitRound, api_teacherAlerts, api_testCanvas, api_testForms, api_testMake, api_todoAdd, api_todoList, api_todoOff, api_todoSeen, api_trainCheer, api_trainTrade, api_trainTradeVote, api_trainVote, api_vaultAct, api_viewAs, api_wagonCarve, api_wagonCarvings, api_wagonTrip, api_wagonTripSave, api_wallClaim, api_wallTap, api_whosAnswer, api_whosAsk, api_whosDone, api_whosFlip, api_whosGuess, api_whosPick, api_ws, api_wsCheck, api_wsPreview, api_wsQuiz, api_wsQuizDone, api_wwData, api_wwSolo };
