@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@700&family=Bangers&family=Permanent+Marker&family=Patrick+Hand&family=Bebas+Neue&family=Special+Elite&family=Merriweather:wght@900&family=Lilita+One&display=swap">
 <!-- Who Do You Think You Are? (renamed from Forehead Flash 2026-11-24; Colleen, 2026-11-23): "the heads up game/app for the phone that works with a tilt like the real game ... i want to be able to build and choose from
      categories that i create". Our own game and look. One student holds the phone on their forehead; the group describes the word in ASL (no voices); tilt DOWN = got it,
      tilt UP = pass. Decks come from /whoami/decks.json (the ones she makes in her editor), or starter.json until she saves her own. Nothing about students is saved anywhere. -->
@@ -73,8 +74,9 @@ button { font: inherit; cursor: pointer; border: 0; }
 #word .pic.has { background-color: #fff; }
 #word .pic.cut { background-color: transparent; background-size: contain; background-position: 50% 50%; box-shadow: none; filter: drop-shadow(0 1vh 0 rgba(0,0,0,.18)); }
 .res li img.cut { background: transparent; object-fit: contain; }
-#word .txt { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; text-align: center; font: 700 12vw/1.02 Fredoka, sans-serif; overflow: hidden; }
+#word .txt { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; text-align: center; font: 700 12vw/1.02 var(--cardfont, Fredoka), sans-serif; overflow: hidden; }
 @media (orientation: portrait) { #word { flex-direction: column; } }      /* a phone held tall (laptop buttons, or rotation lock): picture on top, name below */
+.fontchip { font-size: 19px; }
 #word .txt span { display: block; max-width: 100%; overflow-wrap: normal; word-break: normal; hyphens: none; }
 /* picture only (Colleen: "a picture only mode to challenge students without words") */
 #word.only { width: min(92vw, 66vh); }
@@ -125,7 +127,7 @@ button { font: inherit; cursor: pointer; border: 0; }
 .bzcard { display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .bzcard .bzpic { width: clamp(140px, 24vw, 260px); aspect-ratio: 1; border-radius: 20px; background: #fff 50% 20% / cover no-repeat; box-shadow: 0 6px 0 rgba(27,19,64,.15); }
 .bzcard .bzpic.cut { background-color: transparent; background-size: contain; background-position: 50% 50%; box-shadow: none; }
-.bzcard .bzname { font: 700 clamp(34px, 6vw, 72px)/1.05 Fredoka, sans-serif; max-width: 100%; }
+.bzcard .bzname { font: 700 clamp(34px, 6vw, 72px)/1.05 var(--cardfont, Fredoka), sans-serif; max-width: 100%; }
 .homeTip { display: none; margin: 16px 0 0; background: #fff; border-radius: 18px; padding: 12px 14px; gap: 12px; align-items: center; }
 .homeTip.on { display: flex; }
 #msg { font: 700 9vw/1.1 Fredoka, sans-serif; }
@@ -223,6 +225,8 @@ button { font: inherit; cursor: pointer; border: 0; }
       <p style="margin:12px 0 6px">What’s on the card?</p>
       <div class="row" id="shows"><button class="chip on" data-show="both">🖼️ Picture and name</button><button class="chip" data-show="pic">🖼️ Picture only (harder)</button></div>
       <p class="note" id="showNote" style="margin:6px 0 0"></p>
+      <p style="margin:12px 0 6px">Card font <span class="note">(this device remembers it)</span></p>
+      <div class="row" id="fonts"></div>
       <p style="margin:12px 0 6px">“Got it!” sound <span class="note">(tap one to hear it)</span></p>
       <div class="row" id="snds"><button class="chip" data-snd="chime">🔔 Chime</button><button class="chip" data-snd="ding">🛎️ Ding</button><button class="chip" data-snd="cash">💰 Cha-ching</button><button class="chip" data-snd="fanfare">🎺 Fanfare</button><button class="chip" data-snd="pop">🫧 Pop</button><button class="chip" data-snd="cheer">👏 Applause</button><button class="chip" data-snd="off">🔇 Off</button></div>
       <p style="margin:12px 0 6px">“Pass” sound <span class="note">(tap one to hear it)</span></p>
@@ -414,6 +418,18 @@ async function askTilt() {
   await new Promise(r => setTimeout(r, 450)); return tiltOK;
 }
 
+/* ---------- card font (Colleen 2026-11-25: "i want to give people font options for the cards on both the phone and a laptop"). Saved on each device (ff-font).
+   Only the card's name (and the Buzzer battle card) changes; menus stay as they are. */
+const FONTS = [['fredoka', 'Bubbly', 'Fredoka'], ['atkinson', 'Easy to read', '"Atkinson Hyperlegible"'], ['lilita', 'Chunky', '"Lilita One"'], ['bangers', 'Comic', 'Bangers'], ['marker', 'Marker', '"Permanent Marker"'],
+  ['hand', 'Handwriting', '"Patrick Hand"'], ['bebas', 'Tall', '"Bebas Neue"'], ['type', 'Typewriter', '"Special Elite"'], ['book', 'Storybook', 'Merriweather']];
+let cardFont = FONTS.some(f => f[0] === get('ff-font')) ? get('ff-font') : 'fredoka';
+const fontOf = k => (FONTS.find(f => f[0] === k) || FONTS[0])[2];
+function applyFont() { document.documentElement.style.setProperty('--cardfont', fontOf(cardFont)); }
+function paintFonts() { const box = $('#fonts'); if (!box) return; box.innerHTML = FONTS.map(f => `<button class="chip fontchip${f[0] === cardFont ? ' on' : ''}" data-font="${f[0]}" style="font-family:${f[2].replace(/"/g, "'")}, sans-serif">${f[1]}</button>`).join(''); }
+async function fontReady() { try { await document.fonts.load('700 60px ' + fontOf(cardFont)); } catch (e) {} }      /* the card is sized to fit the name, so the font must be there first */
+document.addEventListener('click', e => { const b = e.target.closest('[data-font]'); if (!b) return; cardFont = b.dataset.font; put('ff-font', cardFont); applyFont(); paintFonts(); fontReady(); });
+applyFont(); paintFonts();
+
 /* ---------- sounds (made here, no files) ---------- */
 let AC = null;
 function tone(f, t0, d, type, vol) { if (!AC) return; const o = AC.createOscillator(), g = AC.createGain(); o.type = type || 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, AC.currentTime + t0); g.gain.linearRampToValueAtTime(vol || .25, AC.currentTime + t0 + .01); g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + t0 + d); o.connect(g); g.connect(AC.destination); o.start(AC.currentTime + t0); o.stop(AC.currentTime + t0 + d + .05); }
@@ -537,7 +553,7 @@ $('#bzQuit').onclick = () => { if (B && B.log.length) bzEnd(); else { B = null; 
 async function startRound() {
   try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) {}
   const only = cardShow === 'pic' && picCount() >= 5, words = deck.words.map(w => String(w).trim()).filter(w => w && (!only || picOf(w)));
-  const hasTilt = await askTilt();
+  const hasTilt = await askTilt(); await fontReady();
   R = { only, list: bag(words), i: -1, got: [], log: [], left: secs, tilt: hasTilt, armed: false, phase: 'hold', busy: false };
   try { const el = document.documentElement; if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' }); } catch (e) {}
   try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch (e) {}
