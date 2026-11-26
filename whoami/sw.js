@@ -1,7 +1,7 @@
 /* Who Do You Think You Are? (was Forehead Flash, 2026-11-23): makes the Home Screen app open fast and keep working if the Wi-Fi drops.
    The page and icons: saved copy first, refreshed in the background. Her decks (decks.json): the network first, the saved copy if offline.
    Pictures: saved the first time they load, so a deck played once works offline. Change VER to replace everything. */
-const VER = 'ff-26', SHELL = ['./', 'index.html', 'starter.json', 'manifest.json', 'icon-192.png', 'icon-512.png'];
+const VER = 'ff-27', SHELL = ['./', 'index.html', 'starter.json', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VER).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VER && k !== 'ff-pics2').map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
@@ -12,6 +12,12 @@ self.addEventListener('fetch', e => {
      picture after the first came back as that first picture: Colleen saw Pippi Longstocking on every card.) */
   if (u.origin === location.origin && u.pathname === '/whoami/img') {
     e.respondWith(caches.open('ff-pics2').then(c => c.match(e.request).then(hit => hit || fetch(e.request).then(r => { if (r.ok) c.put(e.request, r.clone()); return r; })))); return; }
+  /* 2026-11-25 the page itself: the newest from the network when online (a saved copy first meant phones showed the old page once after every update, and
+     the ?help steps opened as the plain game); the saved copy only if the network fails or takes over 4 seconds */
+  if (u.origin === location.origin && e.request.mode === 'navigate' && u.pathname.startsWith('/whoami/')) {
+    e.respondWith((async () => { const saved = () => caches.match('./', { ignoreSearch: true }).then(h => h || caches.match('index.html'));
+      try { const r = await Promise.race([fetch(e.request), new Promise((_, no) => setTimeout(() => no(new Error('slow')), 4000))]); if (r.ok) { const c = r.clone(); caches.open(VER).then(x => x.put('./', c)); } return r; }
+      catch (err) { return (await saved()) || fetch(e.request); } })()); return; }
   if (u.origin === location.origin && u.pathname.startsWith('/whoami/')) {
     e.respondWith(caches.match(e.request, { ignoreSearch: e.request.mode === 'navigate' }).then(hit => { const net = fetch(e.request).then(r => { if (r.ok) { const c = r.clone(); caches.open(VER).then(x => x.put(e.request, c)); } return r; }).catch(() => hit); return hit || net; })); return; }
   if (/(^|\.)wikimedia\.org$/.test(u.hostname) && e.request.destination === 'image') {
