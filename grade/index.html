@@ -223,6 +223,27 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     <div id="rt" style="display:flex;flex-direction:column;gap:10px"></div>
   </section>
 
+  <section class="card" id="plcard">
+    <h2><span class="step">5</span>🧮 Put it all together</h2>
+    <p class="small muted">For the end of the semester: your final, the work still to come, and any what-ifs or retake from steps 2 and 4, all in one grade. Then see how many more Coursework points you'd need to reach the next letter.</p>
+    <div id="pluse" style="display:flex;flex-direction:column;gap:6px"></div>
+    <h3>📝 The final exam <span class="small muted">(counts in Assessments, 90%)</span></h3>
+    <div class="wrow"><span><b>I expect</b></span><input id="plfe" inputmode="decimal" autocomplete="off" placeholder="120"><span><b>out of</b></span><input id="plfp" inputmode="decimal" autocomplete="off" placeholder="150"><span><b>points</b></span><span class="small" id="plfpct"></span></div>
+    <details class="aslfinal"><summary class="small"><b>🤟 In ASL? Your final is 150 points. Add it up here.</b></summary>
+      <p class="small">The ASL final has three parts: <b>Receptive</b> (50 points), <b>Expressive</b> (50 points) and <b>Culture</b> (50 points, open note), for <b>150 points</b> in all.</p>
+      <div class="wrow"><span><b>Receptive</b></span><input id="plr" data-asl inputmode="decimal" autocomplete="off" placeholder="40"><span>/ 50</span></div>
+      <div class="wrow"><span><b>Expressive</b></span><input id="plx" data-asl inputmode="decimal" autocomplete="off" placeholder="40"><span>/ 50</span></div>
+      <div class="wrow"><span><b>Culture</b> <span class="small muted">(open note)</span></span><input id="plc" data-asl inputmode="decimal" autocomplete="off" placeholder="45"><span>/ 50</span></div>
+      <p class="small muted">What you type here fills in the final above (out of 150).</p>
+    </details>
+    <h3>📚 Still to come <span class="small muted">(not counting the final)</span></h3>
+    <div class="wrow"><span><b>Summatives</b> <span class="small muted">(90%)</span>:</span><input id="plsn" inputmode="numeric" autocomplete="off" placeholder="0" style="width:60px"><span>worth</span><input id="plsp" inputmode="decimal" autocomplete="off" placeholder="50" style="width:70px"><span>points each. I expect about</span><input id="plsx" inputmode="decimal" autocomplete="off" placeholder="85" style="width:70px"><span>%</span></div>
+    <div class="wrow"><span><b>Formatives</b> <span class="small muted">(10%)</span>:</span><input id="plcn" inputmode="numeric" autocomplete="off" placeholder="0" style="width:60px"><span>worth</span><input id="plcp" inputmode="decimal" autocomplete="off" placeholder="10" style="width:70px"><span>points each. I expect about</span><input id="plcx" inputmode="decimal" autocomplete="off" placeholder="90" style="width:70px"><span>%</span></div>
+    <div class="wrow"><span><b>My goal</b></span><select id="pll" aria-label="Pick a letter grade"><option value="89.5">A</option><option value="79.5">B</option><option value="69.5">C</option><option value="59.5">D</option><option value="">Other</option></select>
+      <input id="plt" inputmode="decimal" autocomplete="off" style="width:90px" aria-label="Percent"><span><b>%</b></span><span class="small muted">(same goal as step 3)</span></div>
+    <div id="plout" style="display:flex;flex-direction:column;gap:10px"></div>
+  </section>
+
   <p class="small muted">An estimate from your numbers, using the 90% / 10% weights and nothing else changing. Letter grades use A 89.5, B 79.5, C 69.5, D 59.5. Infinite Campus is your official grade. Not signed in: your numbers stay on this device only. Signed in: they are saved with your school Google account, in a file in Ms. Gibbons’s LTHS Google Drive, so you can open them on any device. They are only used to show them back to you.</p>
 </main>
 
@@ -604,7 +625,7 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
   function paintSeg() { [].forEach.call($('ncat').children, function (b) { b.classList.toggle('on', b.dataset.c === cls().ncat); }); }
 
   function out() {
-    var c = cls(), B = baseOf(c); rtOut();
+    var c = cls(), B = baseOf(c); rtOut(); plOut();
     if (B.msg) {
       $('now').innerHTML = '<p class="small muted">' + B.msg + '</p>';
       $('wout').innerHTML = $('nout').innerHTML = '<p class="small muted">Fill in your numbers in step 1 first (or paste the class page above).</p>';
@@ -673,8 +694,8 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
       T.map(function (t, i) { return '<option value="' + i + '"' + (String(c.rt.i) === String(i) ? ' selected' : '') + '>' + esc(t.n) + ' (' + round2(t.s) + ' / ' + t.p + ', ' + f2(t.s / t.p * 100) + '%)</option>'; }).join('') + '</select></label>' +
       '<div class="wrow" id="rtw"><span><b>If I get</b></span><input id="rte" inputmode="decimal" autocomplete="off" value="' + esc(c.rt.e) + '"><span><b>out of <span id="rtp"></span> on the retake</b></span><span class="small" id="rtpct"></span></div>' +
       '<div id="rtout" style="display:flex;flex-direction:column;gap:10px"></div>';
-    $('rti').onchange = function () { c.rt.i = this.value; save(); paintRt(); };
-    $('rte').oninput = function () { c.rt.e = this.value; save(); rtOut(); };
+    $('rti').onchange = function () { c.rt.i = this.value; save(); paintRt(); plOut(); };
+    $('rte').oninput = function () { c.rt.e = this.value; save(); rtOut(); plOut(); };
     rtOut();
   }
   function rtOut() {
@@ -707,11 +728,101 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
     o.innerHTML = html;
   }
 
+
+  /* 4.506 step 5, put it all together (Colleen 2026-11-25: "after the final, a student can complete last minute formative work to get just enough points
+     to tip them over the edge to the next letter grade ... combine this with what they anticipate they'll get on the final"; the ASL final is receptive 50,
+     expressive 50, culture 50 open note = 150; "list how many summatives and formatives are left ... and what they anticipate they'll get on them";
+     "combine any of the tools together ... ignore duplicate information and only use matching info about the final exam once").
+     c.pl = { w (use step 2), r (use step 4), fe, fp, r1, r2, r3 (ASL parts), sn, sp, sx, cn, cp, cx }; the goal is c.nt, shared with step 3.
+     The final is counted once: a step 2 Assessments line or one "summative still to come" with the same points possible as the final is taken to be the final. */
+  var PLK = { plfe: 'fe', plfp: 'fp', plr: 'r1', plx: 'r2', plc: 'r3', plsn: 'sn', plsp: 'sp', plsx: 'sx', plcn: 'cn', plcp: 'cp', plcx: 'cx' };
+  function pl() { var c = cls(); if (!c.pl) c.pl = { w: true, r: true }; return c.pl; }
+  function paintPl() {
+    var P = pl(); Object.keys(PLK).forEach(function (id) { $(id).value = P[PLK[id]] == null ? '' : P[PLK[id]]; });
+    $('plt').value = cls().nt == null ? '' : cls().nt;
+    $('plcard').querySelector('.aslfinal').open = /sign language|\basl\b/i.test(cls().name) || [P.r1, P.r2, P.r3].some(function (v) { return v !== '' && v != null; });
+  }
+  Object.keys(PLK).forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      var P = pl(); P[PLK[id]] = this.value;
+      if (this.hasAttribute('data-asl')) {      // the three ASL parts add up into the final
+        var parts = [P.r1, P.r2, P.r3].map(num);
+        if (parts.some(function (v) { return v !== null; })) { P.fe = String(round2(parts.reduce(function (t, v) { return t + (v && !isNaN(v) ? v : 0); }, 0))); P.fp = '150'; $('plfe').value = P.fe; $('plfp').value = P.fp; }
+      }
+      touch(cls()); save(); plOut();
+    });
+  });
+  $('plt').addEventListener('input', function () { cls().nt = this.value; $('nt').value = this.value; save(); out(); });
+  $('pll').addEventListener('change', function () { if (this.value) { cls().nt = this.value; $('nt').value = $('plt').value = this.value; save(); out(); } else $('plt').focus(); });
+  $('pluse').addEventListener('change', function (ev) { var k = ev.target.dataset.u; if (!k) return; pl()[k] = ev.target.checked; save(); plOut(); });
+  $('plout').addEventListener('click', function (ev) { var r = ev.target.closest('tr[data-t]'); if (!r) return; cls().nt = r.dataset.t; $('nt').value = $('plt').value = r.dataset.t; save(); out(); });
+
+  function plOut() {
+    var c = cls(), P = pl(), o = $('plout'), B = baseOf(c), T = num(c.nt);
+    var lv = CUT.filter(function (k) { return k[1] === T; })[0]; $('pll').value = lv ? String(lv[1]) : '';
+    if (document.activeElement !== $('plt')) $('plt').value = c.nt == null ? '' : c.nt;
+    var fe = num(P.fe), fp = num(P.fp), fpct = $('plfpct');
+    fpct.innerHTML = fe !== null && fp && !isNaN(fe) && fp > 0 ? '= <b>' + f2(fe / fp * 100) + '%</b> on the final (' + letter(fe / fp * 100) + ')' : '';
+    // what steps 2 and 4 have in them
+    var whats = (c.what || []).map(function (w) { return { e: num(w.e), p: num(w.p), cat: w.cat === 'c' ? 'c' : 'a' }; }).filter(function (w) { return w.e !== null && w.p !== null && !isNaN(w.e) && !isNaN(w.p) && w.e >= 0 && w.p > 0; });
+    var t = (c.tests || [])[+(c.rt && c.rt.i)], re = c.rt ? num(c.rt.e) : null, hasRt = !!t && c.rt.i !== '' && re !== null && !isNaN(re) && re >= 0;
+    $('pluse').innerHTML = (whats.length ? '<label class="small"><input type="checkbox" data-u="w"' + (P.w !== false ? ' checked' : '') + '> Include my what-if score' + (whats.length > 1 ? 's' : '') + ' from step 2 (' + whats.map(function (w) { return round2(w.e) + ' / ' + w.p; }).join(', ') + ')</label>' : '') +
+      (hasRt ? '<label class="small"><input type="checkbox" data-u="r"' + (P.r !== false ? ' checked' : '') + '> Include my retake from step 4 (' + esc(t.n) + ': ' + round2(re) + ' / ' + t.p + ')</label>' : '');
+    if (B.msg) { o.innerHTML = '<p class="small muted">Fill in your numbers in step 1 first (or paste the class page above).</p>'; return; }
+    var a = B.a, b = B.b, cc = B.c, d = B.d, used = [], notes = [], bad = [];
+    var hasF = fe !== null || fp !== null;
+    if (hasF && (fe === null || fp === null || isNaN(fe) || isNaN(fp) || fe < 0 || fp <= 0)) { bad.push('The final needs a score and an “out of” (more than 0).'); hasF = false; }
+    if (hasRt && P.r !== false) { a += re - t.s; used.push('🔁 Retake of ' + esc(t.n) + ': ' + round2(re) + ' / ' + t.p + ' in place of ' + round2(t.s)); }
+    var finalTaken = false;
+    if (whats.length && P.w !== false) whats.forEach(function (w) {
+      if (hasF && !finalTaken && w.cat === 'a' && w.p === fp) { finalTaken = true; notes.push('Your step 2 line ' + round2(w.e) + ' / ' + w.p + ' has the same points as your final, so we counted the final only once' + (w.e !== fe ? ', using the ' + round2(fe) + ' you typed for the final here.' : '.')); return; }
+      if (w.cat === 'c') { cc += w.e; d += w.p; } else { a += w.e; b += w.p; }
+      used.push('➕ What-if: ' + round2(w.e) + ' / ' + w.p + ' in ' + (w.cat === 'c' ? 'Coursework' : 'Assessments'));
+    });
+    if (hasF) { a += fe; b += fp; used.push('📝 Final: ' + round2(fe) + ' / ' + fp + ' (' + f2(fe / fp * 100) + '%)'); }
+    var left = function (n, pp, x, nm, cat) {
+      n = num(n); pp = num(pp); x = num(x); if (n === null && pp === null && x === null) return;
+      if (n === null || pp === null || isNaN(n) || isNaN(pp) || n < 0 || pp <= 0 || n % 1) { bad.push(nm + ' still to come need a whole number of them and the points each.'); return; }
+      if (x === null) x = 100; if (isNaN(x) || x < 0) { bad.push(nm + ': the % you expect has to be a number.'); return; }
+      if (cat === 'a' && hasF && !finalTaken && pp === fp && n >= 1) { finalTaken = true; n -= 1; notes.push('One of your summatives still to come is worth ' + pp + ' points, the same as your final, so we took it to be the final and counted it once.'); }
+      if (!n) return;
+      if (cat === 'a') { a += n * pp * x / 100; b += n * pp; } else { cc += n * pp * x / 100; d += n * pp; }
+      used.push((cat === 'a' ? '📚 ' : '✏️ ') + n + ' ' + nm.toLowerCase() + ' × ' + pp + ' points at ' + round2(x) + '%');
+    };
+    left(P.sn, P.sp, P.sx, 'Summatives', 'a'); left(P.cn, P.cp, P.cx, 'Formatives', 'c');
+    var html = bad.length ? '<p class="small">⚠️ ' + bad.join(' ') + '</p>' : '';
+    if (!used.length) { o.innerHTML = html + '<p class="small muted">Type what you expect on the final, or the work still to come, and your whole-semester grade shows here.</p>'; return; }
+    var g = grade(a, b, cc, d), diff = g - B.g, sign = diff > 0.004 ? '+' : diff < -0.004 ? '−' : '';
+    html += '<div class="tiles">' + tile(f2(g) + '%', 'Your grade with all of it', '', letter(g)) + tile(f2(B.g) + '%', 'Now', 'c', letter(B.g)) + tile(sign + f2(Math.abs(diff)), 'Change', 'c', 'percentage points') +
+      (b > 0 ? tile(f2(a / b * 100) + '%', 'Assessments', '', round2(a) + ' / ' + round2(b)) : '') + (d > 0 ? tile(f2(cc / d * 100) + '%', 'Coursework', 'c', round2(cc) + ' / ' + round2(d)) : '') + '</div>' +
+      '<p class="small"><b>Counted:</b></p><ul class="small" style="margin:0;padding-left:20px">' + used.map(function (u) { return '<li>' + u + '</li>'; }).join('') + '</ul>' +
+      (notes.length ? '<div class="verdict warn small">' + notes.map(function (n) { return '<p>🔁 ' + n + '</p>'; }).join('') + '</div>' : '');
+    // last-minute Coursework: new assignments (adds points possible too, all earned) or missing work already in the grade as a 0 (adds earned only)
+    var gNew = function (x) { return grade(a, b, cc + x, d + x); }, gMiss = function (x) { return grade(a, b, cc + x, d); };
+    var solve = function (f, max, tg) { if (f(0) >= tg) return { safe: true }; if (!(f(max) >= tg)) return { no: true }; var lo = 0, hi = max; for (var i = 0; i < 80; i++) { var m = (lo + hi) / 2; if (f(m) >= tg) hi = m; else lo = m; } return { x: Math.ceil(hi * 100 - 1e-6) / 100 }; };
+    var missC = (c.missing || []).filter(function (m) { return m.k === 'c'; }).reduce(function (t, m) { return t + (m.p - (m.s || 0)); }, 0);
+    var each = num(P.cp);
+    var sayNew = function (r) { return r.safe ? '✅ Already there' : r.no ? 'Not possible with Coursework alone' : '<b>' + r.x + ' points</b>' + (each > 0 ? ' <span class="small muted">(about ' + Math.ceil(r.x / each - 1e-9) + ' assignment' + (Math.ceil(r.x / each - 1e-9) === 1 ? '' : 's') + ' of ' + each + ', full credit)</span>' : ''); };
+    var sayMiss = function (r) { return r.safe ? '✅ Already there' : r.no ? 'Not possible this way' : '<b>' + r.x + ' points</b>' + (missC && r.x > missC + 1e-9 ? ' <span class="small muted">(more than your missing Coursework is worth: ' + round2(missC) + ')</span>' : ''); };
+    var next = CUT.slice().reverse().filter(function (k) { return k[1] > g; })[0], goal = T !== null && !isNaN(T) && T > g ? T : next ? next[1] : null;      // a goal already reached → the next letter up
+    html += '<h3 style="margin-top:4px">✏️ Last-minute Coursework: how many more points?</h3>';
+    if (goal !== null && goal > g) {
+      var rn = solve(gNew, 1e6, goal);
+      html += '<div class="verdict ' + (rn.no ? 'down' : 'up') + '"><b>' + (rn.no ? '😬 Coursework alone can’t get you to ' + f2(goal) + '%. Even 100% on all Coursework tops out at ' + f2(grade(a, b, 1, 1)) + '%.' : '🎯 To reach ' + f2(goal) + '% (' + letter(goal) + '), earn about ' + rn.x + ' more Coursework points on new assignments' + (each > 0 ? ' (about ' + Math.ceil(rn.x / each - 1e-9) + ' worth ' + each + ' points each, done perfectly)' : '') + '.') + '</b>' +
+        '<p class="small" style="margin-top:4px">Coursework is only 10% of your grade, so it moves slowly. Ask your teacher what late or extra work they accept.</p></div>';
+    } else html += '<div class="verdict up"><b>🎉 With all of this you’re at ' + f2(g) + '%, an A.</b></div>';
+    if (T !== null && !isNaN(T) && T <= g && goal !== T) html = html.replace('<h3 style="margin-top:4px">✏️', '<p class="small">✅ That keeps your goal of ' + f2(T) + '%. Here’s what it takes to reach the next letter.</p><h3 style="margin-top:4px">✏️');
+    html += '<table><thead><tr><th>To reach <span class="small muted">(tap one)</span></th><th>New Coursework (all points earned)</th><th>Missing work already in your grade as 0</th></tr></thead><tbody>' + CUT.map(function (k) {
+      return '<tr data-t="' + k[1] + '"' + (goal === k[1] ? ' class="pick"' : '') + '><td>' + k[0] + ' (' + k[1] + '%)</td><td>' + sayNew(solve(gNew, 1e6, k[1])) + '</td><td>' + sayMiss(solve(gMiss, Math.max(0, d - cc), k[1])) + '</td></tr>';
+    }).join('') + '</tbody></table><p class="small muted">New assignments add points possible too, so you need more of them. Missing work is already counted as a 0, so every point you turn in counts fully.</p>';
+    o.innerHTML = html;
+  }
+
   function paintAll() {
     st.cur = Math.min(Math.max(0, st.cur | 0), st.classes.length - 1);
     var c = cls();
     ['ae', 'ap', 'ce', 'cp', 'np', 'nt'].forEach(function (k) { $(k).value = c[k] == null ? '' : c[k]; });
-    paintAcct(); paintWins(); paintGrid(); paintClasses(); paintProg(); paintWhat(); paintSeg(); out(); paintRt();
+    paintAcct(); paintWins(); paintGrid(); paintClasses(); paintProg(); paintWhat(); paintSeg(); paintPl(); out(); paintRt();
   }
 
   /* back from the Google sign-in page with a one-time code */
