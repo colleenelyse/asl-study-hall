@@ -1299,8 +1299,8 @@ addEventListener('appinstalled', function () { window.__bip = null; var b = docu
 })();
 </script>
 <script>
-/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.524) */
-window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.524" };
+/* ASL Study Hall phone app (built by dev/build-app.py from Index.html, ASL Study 4.527) */
+window.ASL_APP = { door: "https://script.google.com/macros/s/AKfycbztGe8rphjshwYO8meZJTAFv3GumJHWpg3k8w69S-MTlnbpc3JxfRg5mXVHbnAN4aeg/exec", main: "https://script.google.com/a/macros/d204.lths.net/s/AKfycbxzZdyNoOmmUBxph0wvG8q8lMPThIRy46lncYWGHxbzVB4I4WYTaMVACB9LVxXwAv4z/exec", domain: 'd204.lths.net', v: "4.527" };
 (function () {
   function run(ok, fail) {
     return new Proxy({}, { get: function (_, k) {
@@ -1963,6 +1963,7 @@ const GAMES = [
   ['wwsolo', 'Who\u2019s Who', 'You and the computer each have a secret person: ask in signs, answer its signed questions, find its person first', '🕵️'],      /* 4.291 */
   ['convo', 'Conversation Studio', 'Record your part of an ASL conversation, one turn at a time (video only, no sound)', '🎬'],      /* 4.339 */
   ['switch', 'Syntax Switch', 'Turn English sentences into ASL: move the signs, discard the English words that have no sign, and choose the right sign', '🔀'],      /* 4.338 */
+  ['mysets', 'My Card Sets', 'Make your own decks for Who Do You Think You Are? and play them on your phone', '🎭'],      /* 4.526 */
   ['fuzzy', 'Fuzzy Crossing', 'Watch the signed rule and help the fuzzies cross the right way, or crack the Gatekeepers\u2019 secret rule', '🌉'],      /* 4.289 */
   ['family', 'Family Tree', 'Build your family with photos and the sign for each person, then show it as a tree, a chart, a photo wall and more', '🌳'],      /* 4.293 */
   ['party', 'Dinner Party', 'World language teachers at a conference banquet: read what each one signs, then seat them so neighbors share a language or a hobby', '🍽️'],      /* 4.136 */
@@ -2163,11 +2164,11 @@ VIEW.home = () => {
 /* ── 4.69 (Colleen: the home page was too crowded): five doors, each opening its own page ── */
 /* 4.73 (Colleen): the wrong-choices setting moved from Home to the Study and Games pages, where it is used */
 const distHtml = () => `<div class="row" style="flex-wrap:wrap;gap:6px 10px"><span class="small muted" style="font-weight:800">Wrong choices come from</span><div class="seg distseg grow" style="min-width:230px">${DIST_OPTS.map(o => `<button class="${distMode() === o[0] ? 'on' : ''}" data-a="dist" data-m="${o[0]}">${o[1]}</button>`).join('')}</div></div>`;
-const FUN_GAMES = ['pawtopia', 'toast', 'logos', 'munch', 'fuzzy', 'wwsolo', 'wagon', 'mobsolo', 'claw', 'seasolo', 'islesolo', 'escape', 'manners', 'house', 'party', 'brsolo', 'vasolo'];
+const FUN_GAMES = ['pawtopia', 'mysets', 'toast', 'logos', 'munch', 'fuzzy', 'wwsolo', 'wagon', 'mobsolo', 'claw', 'seasolo', 'islesolo', 'escape', 'manners', 'house', 'party', 'brsolo', 'vasolo'];
 const studyList = () => myGames().filter(g => FUN_GAMES.indexOf(g[0]) < 0 && g[0] !== 'pawtopia'), funList = () => myGames().filter(g => FUN_GAMES.indexOf(g[0]) >= 0 && g[0] !== 'pawtopia');      /* 4.286: Pawtopia has its own door */
 /* 4.286 (Colleen approved): the Games page has three tabs, sorted by how each game plays. Quick games: arcade and point games, a few minutes a round.
    Adventures: escape rooms and story games you finish. Class games: join (or, for teachers, host) a game with the whole class. */
-const GAME_TABS = [['quick', '⚡', 'Quick games', ['toast', 'munch', 'fuzzy', 'wwsolo', 'logos', 'claw', 'mobsolo', 'seasolo', 'wagon']], ['adv', '🗝️', 'Adventures', ['escape', 'manners', 'house', 'islesolo', 'party', 'vasolo', 'brsolo']], ['class', '📽️', 'Class games', []]];
+const GAME_TABS = [['quick', '⚡', 'Quick games', ['toast', 'munch', 'fuzzy', 'wwsolo', 'logos', 'claw', 'mobsolo', 'seasolo', 'wagon', 'mysets']], ['adv', '🗝️', 'Adventures', ['escape', 'manners', 'house', 'islesolo', 'party', 'vasolo', 'brsolo']], ['class', '📽️', 'Class games', []]];
 const gameTabList = k => { const t = GAME_TABS.find(x => x[0] === k); if (!t || k === 'class') return []; const at = g => t[3].indexOf(g[0]) < 0 ? 99 : t[3].indexOf(g[0]);
   return funList().filter(g => t[3].indexOf(g[0]) >= 0 || (k === 'quick' && !GAME_TABS.some(x => x[3].indexOf(g[0]) >= 0))).sort((a, b) => at(a) - at(b)); };      /* a game not sorted yet shows under Quick games */
 const gameTabsOn = () => GAME_TABS.filter(t => t[0] === 'class' ? liveModes().length > 0 : gameTabList(t[0]).length > 0);
@@ -3028,6 +3029,7 @@ function startGame(g, forced, learnN, lab) {
   if (g === 'munch') return go('munch');      /* 4.193 Sign Munchers */
   if (g === 'convo') return go('convo');      /* 4.339 Conversation Studio */
   if (g === 'switch') return go('switch');      /* 4.338 Syntax Switch */
+  if (g === 'mysets') return go('mysets');      /* 4.526 My Card Sets */
   if (g === 'fuzzy') return go('fuzzy');      /* 4.289 Fuzzy Crossing */
   if (g === 'family') return go('family');      /* 4.293 Family Tree */
   if (g === 'wwsolo') return go('wwsolo');      /* 4.291 Who's Who (solo) */
@@ -3735,7 +3737,7 @@ const brSndUrl = n => n ? BR_SND_BASE + (/^M\d$/.test(n) ? 'music/' : 'sfx/') + 
 const lcKind = p => !p ? '' : p.kind === 'treats' ? 'for Pawtopia' : p.kind === 'character' ? 'game character' : p.kind === 'shop' ? ({ theme: 'background', title: 'title', effect: 'effect' }[p.type || ((S.shop || []).find(i => i.id === p.id) || {}).type] || 'shop extra') : '';
 /* ───────── 4.69 (Colleen: "load each game only when a student opens it"): the bigger games, and the teacher-only tools (chunk_teach), live in their own files (chunk_*.html)
    and are fetched the first time they are needed, so the app itself starts smaller and faster ───────── */
-const CHUNK_VIEW = { apps: 'teach', todo: 'teach', camsamp: 'teach', chal: 'chal', chteach: 'chal', bell: 'teach', convo: 'convo', cvteach: 'convo', switch: 'switch', fb: 'teach', family: 'family', ftteach: 'family', wwsolo: 'whos', mymap: 'exam', exsum: 'exam', exml: 'exam', exams: 'exam', exqti: 'exam', exedit: 'exam', exlive: 'exam', exres: 'exam', exgrade: 'exam', exroster: 'exam', exan: 'exam', fuzzy: 'fuzzy', logos: 'logos', pawtopia: 'pawtopia', wagon: 'wagon', munch: 'munch', toast: 'fly', toasttest: 'fly', vasolo: 'vault', brsolo: 'breach', party: 'party', brsounds: 'teach', brguide: 'teach', today: 'teach', quick: 'teach', seasolo: 'sea', islesolo: 'isle', escape: 'rooms', manners: 'rooms', house: 'house', appset: 'teach', mictest: 'teach', photos: 'teach', seats: 'teach', groups: 'teach', picker: 'teach', passboard: 'teach', acts: 'teach', fsres: 'teach', qres: 'teach', spots: 'teach', reports: 'teach', prizes: 'teach', tests: 'teach', dice: 'teach', dash: 'teach', codes: 'teach', board: 'teach', focus: 'teach' }, CHUNK_MODE = { vault: 'vault', sea: 'sea', isle: 'isle', train: 'train', wall: 'wall', asst: 'asst', spin: 'spin', whos: 'whos', breach: 'breach', escape: 'rooms', case: 'case', mob: 'mob' };
+const CHUNK_VIEW = { mysets: 'cards', apps: 'teach', todo: 'teach', camsamp: 'teach', chal: 'chal', chteach: 'chal', bell: 'teach', convo: 'convo', cvteach: 'convo', switch: 'switch', fb: 'teach', family: 'family', ftteach: 'family', wwsolo: 'whos', mymap: 'exam', exsum: 'exam', exml: 'exam', exams: 'exam', exqti: 'exam', exedit: 'exam', exlive: 'exam', exres: 'exam', exgrade: 'exam', exroster: 'exam', exan: 'exam', fuzzy: 'fuzzy', logos: 'logos', pawtopia: 'pawtopia', wagon: 'wagon', munch: 'munch', toast: 'fly', toasttest: 'fly', vasolo: 'vault', brsolo: 'breach', party: 'party', brsounds: 'teach', brguide: 'teach', today: 'teach', quick: 'teach', seasolo: 'sea', islesolo: 'isle', escape: 'rooms', manners: 'rooms', house: 'house', appset: 'teach', mictest: 'teach', photos: 'teach', seats: 'teach', groups: 'teach', picker: 'teach', passboard: 'teach', acts: 'teach', fsres: 'teach', qres: 'teach', spots: 'teach', reports: 'teach', prizes: 'teach', tests: 'teach', dice: 'teach', dash: 'teach', codes: 'teach', board: 'teach', focus: 'teach' }, CHUNK_MODE = { vault: 'vault', sea: 'sea', isle: 'isle', train: 'train', wall: 'wall', asst: 'asst', spin: 'spin', whos: 'whos', breach: 'breach', escape: 'rooms', case: 'case', mob: 'mob' };
 const CHUNK = {};
 function chunkRun(html) {
   const st = /<style>([\s\S]*?)<\/style>/.exec(html), sc = /<script>([\s\S]*)<\/script>/.exec(html);
