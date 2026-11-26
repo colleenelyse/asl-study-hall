@@ -106,7 +106,11 @@ button { font: inherit; cursor: pointer; border: 0; }
 .sgf textarea { resize: vertical; }
 .sgmsg { min-height: 1.4em; font-weight: 800; margin: 12px 0 6px; } .sgmsg.ok { color: #0A7A55; } .sgmsg.bad { color: #B3123E; }
 .minsc { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; cursor: text; }
-.minsc input { width: 4.2em; font: 800 17px Nunito, sans-serif; padding: 4px 6px; border: 2px solid #CFC4F2; border-radius: 10px; text-align: center; background: #fff; color: var(--ink); }
+.minsc input { width: 4.6em; font: 700 24px/1 'Courier New', ui-monospace, monospace; letter-spacing: .06em; font-variant-numeric: tabular-nums; padding: 6px 8px; border: 3px solid #3a3a3a; border-radius: 8px; text-align: center; background: #101410; color: #6CFF7A; text-shadow: 0 0 6px rgba(108,255,122,.6); caret-color: #6CFF7A; }      /* 2026-11-25 Colleen: like a microwave, minutes:seconds */
+.tstep { width: 40px; height: 40px; border-radius: 50%; background: #fff; color: var(--ink); font: 800 26px/1 Nunito, sans-serif; display: grid; place-items: center; padding: 0; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+.tstep:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.minsc input::placeholder { color: #2f6b36; text-shadow: none; }
+.minsc small { font-size: 13px; opacity: .75; }
 .minsc.on input { border-color: var(--ink); }
 .mixl { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
 .mixl label { display: flex; align-items: center; gap: 10px; border-radius: 14px; padding: 10px 12px; background: #F7F3FF; cursor: pointer; border-left: 8px solid var(--c); }
@@ -230,12 +234,12 @@ button { font: inherit; cursor: pointer; border: 0; }
       <p style="margin:12px 0 6px">“Got it!” sound <span class="note">(tap one to hear it)</span></p>
       <div class="row" id="snds"><button class="chip" data-snd="chime">🔔 Chime</button><button class="chip" data-snd="ding">🛎️ Ding</button><button class="chip" data-snd="cash">💰 Cha-ching</button><button class="chip" data-snd="fanfare">🎺 Fanfare</button><button class="chip" data-snd="pop">🫧 Pop</button><button class="chip" data-snd="cheer">👏 Applause</button><button class="chip" data-snd="off">🔇 Off</button></div>
       <p style="margin:12px 0 6px">“Pass” sound <span class="note">(tap one to hear it)</span></p>
-      <div class="row" id="bads"><button class="chip" data-bad="buzz">🚫 Buzz</button><button class="chip" data-bad="womp">🎺 Womp womp</button><button class="chip" data-bad="boing">🌀 Boing</button><button class="chip" data-bad="whoosh">💨 Whoosh</button><button class="chip" data-bad="bonk">🔨 Bonk</button><button class="chip" data-bad="off">🔇 Off</button></div>
-      <p style="margin:12px 0 6px">Vibration <span class="note">(every sound also buzzes the phone, so players who can’t hear it still feel it)</span></p>
+      <div class="row" id="bads"><button class="chip" data-bad="buzz">🚫 Buzz</button><button class="chip" data-bad="uhoh">🙊 Uh-oh</button><button class="chip" data-bad="boing">🌀 Boing</button><button class="chip" data-bad="whoosh">💨 Whoosh</button><button class="chip" data-bad="bonk">🔨 Bonk</button><button class="chip" data-bad="off">🔇 Off</button></div>
+      <p style="margin:12px 0 6px">Vibration <span class="note">(every sound also buzzes the phone)</span></p>
       <div class="row" id="haps"><button class="chip" data-hap="on">📳 On</button><button class="chip" data-hap="off">📴 Off</button></div>
       <p class="note" style="margin:6px 0 0">Tap 📳 On to feel the “Time’s up!” buzz. Android phones and iPhones with iOS 18 or newer can vibrate; laptops can’t.</p>
       <p style="margin:12px 0 6px">How long is a round?</p>
-      <div class="row" id="times"><button class="chip" data-t="60">1 minute</button><button class="chip on" data-t="90">1½ minutes</button><button class="chip" data-t="120">2 minutes</button><button class="chip" data-t="0">⏸ No timer</button><label class="chip minsc" id="minsC">⌨️ <input type="number" id="minsIn" min="0.5" max="30" step="0.5" inputmode="decimal" placeholder="Other" aria-label="Type your own number of minutes"> minutes</label></div>
+      <div class="row" id="times"><button class="chip" data-t="60">1 minute</button><button class="chip on" data-t="90">1½ minutes</button><button class="chip" data-t="120">2 minutes</button><button class="chip" data-t="0">⏸ No timer</button><div class="chip minsc" id="minsC"><button type="button" class="tstep" data-step="-15" aria-label="15 seconds less">−</button><input type="text" id="minsIn" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="0:00" aria-label="Round time, minutes and seconds, like a microwave"><button type="button" class="tstep" data-step="15" aria-label="15 seconds more">+</button><small>min : sec</small></div></div>
       <ol class="steps">
         <li><span class="n">1</span><span>Turn your phone <b>sideways</b> and hold it on your forehead, screen facing your group.</span></li>
         <li><span class="n">2</span><span>Your group describes the word <b>in ASL only</b>. You guess out loud or in ASL.</span></li>
@@ -353,12 +357,25 @@ document.addEventListener('click', e => {
   const nt = e.target.closest('[data-nt]'); if (nt) { nT = +nt.dataset.nt; $$('#nTeams .chip').forEach(c => c.classList.toggle('on', c === nt)); paintNames(); }
   const bn = e.target.closest('[data-bn]'); if (bn) { bzN = +bn.dataset.bn; $$('#bzN .chip').forEach(c => c.classList.toggle('on', c === bn)); }
   const pr = e.target.closest('[data-per]'); if (pr) { per = +pr.dataset.per; $$('#perTeam .chip').forEach(c => c.classList.toggle('on', c === pr)); }
-  const t = e.target.closest('[data-t]'); if (t) { secs = +t.dataset.t; put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c === t)); $('#minsIn').value = ''; }
+  const t = e.target.closest('[data-t]'); if (t) { secs = +t.dataset.t; put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c === t)); paintMins(); }
 });
 /* her own number of minutes (Colleen 2026-11-24: "people can type in a number of minutes for the timer"): half a minute to 30 minutes */
-function paintMins() { const own = ![0, 60, 90, 120].includes(secs); $('#minsC').classList.toggle('on', own); if (own && document.activeElement !== $('#minsIn')) $('#minsIn').value = String(Math.round(secs / 30) / 2); }
-$('#minsIn').addEventListener('input', () => { const v = parseFloat($('#minsIn').value); if (!(v >= .5 && v <= 30)) return; secs = Math.round(v * 60); put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c.id === 'minsC')); });
-$('#minsIn').addEventListener('change', () => { const v = parseFloat($('#minsIn').value); if (!(v >= .5 && v <= 30)) { $('#minsIn').value = v > 30 ? '30' : ''; if (v > 30) { secs = 1800; put('ff-secs', '1800'); } } paintMins(); });
+/* the type-your-own time works like a microwave (Colleen 2026-11-25: "make this look like time on a microwave showing minutes and seconds as i worry students won't
+   actually know how long it is written this way"): type 2 3 0 and it reads 2:30; typing 90 means 90 seconds (1:30). 10 seconds to 30 minutes. */
+const mmss = n => Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0');
+const digitsOf = v => String(v || '').replace(/\D/g, '').replace(/^0+/, '').slice(-4);
+const showDigits = d => d ? (d.length <= 2 ? '0:' + d.padStart(2, '0') : d.slice(0, -2) + ':' + d.slice(-2)) : '';
+const secsOfDigits = d => d ? (d.length <= 2 ? +d : +d.slice(0, -2) * 60 + +d.slice(-2)) : 0;
+function paintMins() { const own = ![0, 60, 90, 120].includes(secs); $('#minsC').classList.toggle('on', own); if (document.activeElement !== $('#minsIn')) $('#minsIn').value = secs ? mmss(secs) : ''; }      /* the clock always shows the round time; a preset button fills it in (Colleen 2026-11-25) */
+/* − and + change the time by 15 seconds (Colleen 2026-11-25: "make plus minus arrows on the time clock and move in 15 second increments ... click the prefab 2 minutes and
+   that goes into the clock and then people can tweak up or down from there"). From No timer, + starts at 1:00. */
+document.addEventListener('click', e => { const b = e.target.closest('[data-step]'); if (!b) return; e.preventDefault(); const st = +b.dataset.step;
+  let n = secs ? Math.round((secs + st) / 15) * 15 : (st > 0 ? 60 : 0); n = Math.max(15, Math.min(1800, n)); if (!secs && st < 0) return;
+  secs = n; put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c.dataset.t !== undefined && +c.dataset.t === secs)); $('#minsIn').blur(); paintMins(); });
+$('#minsIn').addEventListener('input', () => { const inp = $('#minsIn'), d = digitsOf(inp.value); inp.value = showDigits(d); inp.setSelectionRange && inp.setSelectionRange(inp.value.length, inp.value.length);
+  const n = secsOfDigits(d); if (!(n >= 10 && n <= 1800)) return; secs = n; put('ff-secs', String(secs)); $$('#times .chip').forEach(c => c.classList.toggle('on', c.dataset.t !== undefined && +c.dataset.t === secs)); $('#minsC').classList.toggle('on', ![60, 90, 120].includes(secs)); });
+$('#minsIn').addEventListener('change', () => { const n = secsOfDigits(digitsOf($('#minsIn').value)); if (n > 1800) { secs = 1800; put('ff-secs', '1800'); } else if (n && n < 10) { secs = 10; put('ff-secs', '10'); } $('#minsIn').blur(); paintMins(); });
+$('#minsIn').addEventListener('focus', () => { const inp = $('#minsIn'); setTimeout(() => inp.setSelectionRange && inp.setSelectionRange(inp.value.length, inp.value.length), 0); });
 document.addEventListener('input', e => { if (e.target.dataset && e.target.dataset.tn !== undefined) { names[+e.target.dataset.tn] = e.target.value; put('ff-names', JSON.stringify(names)); } });
 const picCount = () => deck.words.filter(w => picOf(w)).length;
 function paintShow() { const n = picCount(), b = document.querySelector('[data-show="pic"]'); b.disabled = n < 5; b.style.opacity = n < 5 ? .45 : 1; if (n < 5 && cardShow === 'pic') cardShow = 'both';
@@ -447,19 +464,19 @@ const GOOD = {
   pop: () => { sweep(300, 1100, 0, .09, .35); tone(1400, .08, .06, 'sine', .08); },
   cheer: () => { for (let i = 0; i < 26; i++) noise(i * .045 + Math.random() * .03, .05 + Math.random() * .05, .22 + Math.random() * .2, 900, 4500); },
   off: () => {} };
-let goodSnd = GOOD[get('ff-snd')] ? get('ff-snd') : 'chime';
+let goodSnd = GOOD[get('ff-snd')] ? get('ff-snd') : 'ding';      /* 2026-11-25 Colleen: default sounds are Ding and Bonk */
 /* "Pass" sounds (Colleen: "make a wrong sound too") */
 function slide(type, f0, f1, t0, d, vol) { if (!AC) return; const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f0, AC.currentTime + t0); o.frequency.linearRampToValueAtTime(f1, AC.currentTime + t0 + d);
   g.gain.setValueAtTime(0, AC.currentTime + t0); g.gain.linearRampToValueAtTime(vol, AC.currentTime + t0 + .02); g.gain.setValueAtTime(vol, AC.currentTime + t0 + d * .8); g.gain.linearRampToValueAtTime(.0001, AC.currentTime + t0 + d); o.connect(g); g.connect(AC.destination); o.start(AC.currentTime + t0); o.stop(AC.currentTime + t0 + d + .05); }
 const BAD = {
   buzz: () => tone(220, 0, .25, 'sawtooth', .12),
-  womp: () => { slide('sawtooth', 392, 370, 0, .28, .09); slide('sawtooth', 370, 349, .3, .28, .09); slide('sawtooth', 349, 330, .6, .28, .09); slide('sawtooth', 330, 262, .9, .7, .1); },
+  uhoh: () => { tone(659, 0, .16, 'triangle', .28); tone(494, .17, .32, 'triangle', .28); tone(988, 0, .1, 'sine', .05); },      /* 2026-11-25 Colleen: "remove womp womp and put in a new option": a quick two-note uh-oh */
   boing: () => { if (!AC) return; const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime; o.type = 'sine'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(420, t + .08);
     for (let k = 0; k < 6; k++) o.frequency.exponentialRampToValueAtTime(k % 2 ? 300 - k * 20 : 180 - k * 10, t + .08 + (k + 1) * .07); g.gain.setValueAtTime(.3, t); g.gain.exponentialRampToValueAtTime(.001, t + .55); o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + .6); },
   whoosh: () => { noise(0, .35, .35, 500, 2500); sweep(700, 160, 0, .3, .08); },
   bonk: () => { sweep(260, 90, 0, .12, .45); noise(0, .04, .3, 200, 1200); },
   off: () => {} };
-let badSnd = BAD[get('ff-bad')] ? get('ff-bad') : 'buzz';
+let badSnd = BAD[get('ff-bad')] ? get('ff-bad') : 'bonk';
 const SND0 = { good: () => GOOD[goodSnd](), pass: () => BAD[badSnd](), tick: () => tone(1200, 0, .05, 'square', .06), go: () => tone(880, 0, .3, 'triangle'), end: () => { tone(392, 0, .25, 'triangle'); tone(330, .22, .25, 'triangle'); tone(262, .44, .5, 'triangle'); } };
 /* ---------- vibration (Colleen 2026-11-25: "custom haptics for anything that makes noise to provide equal access to deaf players").
    Every sound has its own buzz, and it buzzes even when that sound is set to Off. Each one feels different:
@@ -620,7 +637,7 @@ function answer(ok) {
   if (!R || R.phase !== 'play' || R.busy) return; R.busy = true; const w = R.list[R.i]; R.log.push([w, ok]); if (ok) R.got.push(w);
   const g = $('#game'), el = $('#word'); el.style.transform = ''; el.className = ok ? 'outD' : 'outU'; setTimeout(() => { g.classList.add(ok ? 'good' : 'pass'); el.style.display = 'none'; msg(ok ? 'Got it!' : 'Pass'); }, 200); ok ? SND.good() : SND.pass();
   $('#score').textContent = R.got.length;
-  setTimeout(() => { g.classList.remove('good', 'pass'); msg(''); R.busy = false; if (R.phase === 'play') next(); }, 850);
+  setTimeout(() => { g.classList.remove('good', 'pass'); msg(''); if (!R) return; R.busy = false; if (R.phase === 'play') next(); }, 850);      /* the round may have been ended in that moment */
 }
 function loop() {
   if (!R) return;
@@ -648,7 +665,7 @@ function over() {
 function finish() {
   const g = $('#game'); g.className = ''; $('#turn').classList.remove('on');
   try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {} try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) {} try { wake && wake.release(); } catch (e) {} wake = null;
-  const n = R.got.length; $('#dnScore').textContent = n + (n === 1 ? ' word' : ' words'); $('#dnDeck').textContent = (deck.emoji || '') + ' ' + deck.name + ' · ' + (secs ? Math.round(secs / 60 * 10) / 10 + ' min' : 'no timer');
+  const n = R.got.length; $('#dnScore').textContent = n + (n === 1 ? ' word' : ' words'); $('#dnDeck').textContent = (deck.emoji || '') + ' ' + deck.name + ' · ' + (secs ? mmss(secs) : 'no timer');
   $('#dnEm').textContent = n >= 10 ? '🏆' : n >= 5 ? '🎉' : '👏';
   $('#dnList').innerHTML = R.log.length ? R.log.map(x => `<li class="${x[1] ? 'ok' : 'no'}">${picOf(x[0]) ? `<img src="${esc(picOf(x[0]))}" alt="">` : ''}${x[1] ? '✓' : '↷'} ${esc(x[0])}</li>`).join('') : '<li class="no">No cards this round.</li>';
   $$('#dnList img').forEach(im => cutout(im.getAttribute('src')).then(r => { if (r) { im.src = r.src; im.classList.toggle('cut', !!r.cut); } }));      /* the cut-out pictures in the list too */
