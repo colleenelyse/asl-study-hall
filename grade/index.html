@@ -6,6 +6,8 @@
 <meta name="robots" content="noindex">
 <title>Grade Calculator</title>
 <link rel="icon" type="image/png" sizes="512x512" href="../img/logo-512.png">
+<link rel="apple-touch-icon" href="icon-180.png"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#1E9C9A">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Grades"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Nunito:wght@500;700;800&display=swap">
 <!-- asl.cool/grade (ASL Study 4.498; saving, Infinite Campus paste and wins 4.499): a grade calculator for any class on the 90 / 10 system (Assessments 90%, Coursework 10%).
      Built from the Summative Stacker's Grade Impact Calculator (chunk_chal.html chCalcPaint / chCalcOut). Nothing is sent anywhere:
@@ -103,15 +105,59 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
 .confetti { position: fixed; top: -12px; width: 10px; height: 14px; z-index: 60; pointer-events: none; animation: fall 2.6s ease-in forwards }
 @keyframes fall { to { transform: translateY(105vh) rotate(540deg); opacity: .8 } }
 @media (prefers-reduced-motion: reduce) { .confetti { display: none } }
+/* home-screen steps (same look as asl.cool/study) */
+#appsteps { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; background: #0B2A4E; color: #fff; font: 500 17px/1.5 "Nunito", system-ui, sans-serif;
+  padding: calc(env(safe-area-inset-top, 0px) + 24px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 32px) max(16px, env(safe-area-inset-left, 0px)) }
+#appsteps main { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px }
+#appsteps .top { display: flex; align-items: center; gap: 14px } #appsteps .top img { width: 72px; height: 72px; border-radius: 17px; box-shadow: 0 4px 14px rgba(0,0,0,.35) }
+#appsteps h1 { font: 700 28px/1.1 "Fredoka", system-ui, sans-serif; margin: 0; color: #fff } #appsteps .sub { margin: 2px 0 0; color: #C9D6EA; font-size: 15px }
+#appsteps .card2 { background: #12365F; border: 1px solid rgba(255,255,255,.18); border-radius: 18px; padding: 16px 18px }
+#appsteps h2 { font: 600 20px/1.2 "Fredoka", system-ui, sans-serif; margin: 0 0 10px; color: #fff }
+#appsteps ol { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 12px }
+#appsteps ol li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start }
+#appsteps ol li::before { content: counter(s); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 17px "Fredoka", sans-serif; color: #0B2A4E; background: #F6C24B }
+#appsteps ol li:nth-child(2)::before { background: #6FCB9F } #appsteps ol li:nth-child(3)::before { background: #A884E0 } #appsteps ol li:nth-child(4)::before { background: #5DB6F2 } #appsteps ol li:nth-child(5)::before { background: #F2766A }
+#appsteps .ic { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 28px; padding: 0 6px; border-radius: 8px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.18); font-weight: 800; vertical-align: middle }
+#appsteps .ic svg { width: 18px; height: 18px } #appsteps b.k { color: #F6C24B } #appsteps .note { color: #C9D6EA; font-size: 15px; margin: 10px 0 0 }
+#appsteps .go { display: block; width: 100%; border: 0; cursor: pointer; text-align: center; background: #5DB6F2; color: #0B2A4E; font: 700 20px "Fredoka", sans-serif; padding: 15px 18px; border-radius: 999px; box-shadow: 0 4px 0 #2F86C4 }
+#appsteps .tabs { display: flex; gap: 8px; margin-bottom: 12px }
+#appsteps .tabs button { flex: 1; font: 700 15px "Nunito", sans-serif; padding: 9px 6px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: transparent; color: #fff; cursor: pointer }
+#appsteps .tabs button[aria-pressed="true"] { background: #fff; color: #0B2A4E }
+#appsteps .stripes { display: flex; gap: 6px; justify-content: center } #appsteps .stripes i { width: 34px; height: 6px; border-radius: 9px }
+.phonebtn { align-self: flex-start }
 </style>
 </head>
 <body>
+<div id="appsteps" hidden><main>
+  <div class="top"><img src="icon-180.png" alt="" width="72" height="72"><div><h1>Grade Calculator</h1><p class="sub">Put it on your phone’s home screen</p></div></div>
+  <section class="card2">
+    <h2>Add the icon (one time)</h2>
+    <div class="tabs" role="group" aria-label="Your phone"><button type="button" data-p="ios" aria-pressed="false">iPhone</button><button type="button" data-p="android" aria-pressed="false">Android</button></div>
+    <div data-for="ios" hidden><ol>
+      <li><span>Open this page in <b class="k">Safari</b>.</span></li>
+      <li><span>Tap <b class="k">Share</b> <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> at the bottom of the screen. Don’t see it? Tap <span class="ic">•••</span> first.</span></li>
+      <li><span>Tap <b class="k">Add to Home Screen</b>. Don’t see it? Scroll down, or tap <b class="k">More</b> <span class="ic">•••</span>.</span></li>
+      <li><span>If you see <b class="k">Open as Web App</b>, leave it turned on.</span></li>
+      <li><span>Tap <b class="k">Add</b>. The Grades icon is now on your home screen.</span></li>
+    </ol></div>
+    <div data-for="android" hidden><button class="go" type="button" id="appstepsinst" hidden style="margin-bottom:12px">📲 Install now</button><ol>
+      <li><span>Open this page in <b class="k">Chrome</b>.</span></li>
+      <li><span>Tap the menu <span class="ic" aria-label="menu">⋮</span> at the top right.</span></li>
+      <li><span>Tap <b class="k">Install app</b> (it may say <b class="k">Add to Home screen</b>).</span></li>
+      <li><span>Tap <b class="k">Install</b> (or <b class="k">Add</b>). The Grades icon is now on your home screen.</span></li>
+    </ol></div>
+    <p class="note">Then open the Grade Calculator from the icon and sign in once with your school Google account, so your classes are there every time.</p>
+  </section>
+  <button class="go" type="button" id="appstepsgo">Go to the Grade Calculator</button>
+  <div class="stripes" aria-hidden="true"><i style="background:#F2766A"></i><i style="background:#F6C24B"></i><i style="background:#6FCB9F"></i><i style="background:#A884E0"></i><i style="background:#5DB6F2"></i></div>
+</main></div>
 <main>
   <section class="card">
     <div class="head"><span class="ic"><svg viewBox="0 0 64 64" width="52" height="52" aria-hidden="true"><path d="M32 40 8 30v6l24 10 24-10v-6z" fill="#f2b705"/><path d="M8 30l24 10 24-10-24-10z" fill="#ffd34d"/><path d="M32 30 8 20v6l24 10 24-10v-6z" fill="#1fa88a"/><path d="M8 20l24 10 24-10L32 10z" fill="#3fd6b0"/><path d="M32 20 8 10v6l24 10 24-10v-6z" fill="#6d3fd1"/><path d="M8 10l24 10 24-10L32 0z" fill="#a98bff"/></svg></span>
       <div><h1>Grade Calculator</h1><p class="small muted">For any class on the 90 / 10 system: Assessments count 90%, Coursework 10%.</p></div></div>
     <p>Paste or type your numbers from Infinite Campus. Then try a score (<b>What if I get…?</b>) or work backwards (<b>What do I need?</b>). Paste again every week or two to see how you’re doing.</p>
     <div class="acct" id="acct"></div>
+    <a class="link small phonebtn" id="phonebtn" href="?help">📲 Put the Grade Calculator on your phone</a>
   </section>
 
   <section class="card wins" id="wins" hidden></section>
@@ -255,6 +301,7 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
   var KEY = 'gradecalc', TK = 'asl-app-tok', SEEN = 'gradecalc-seen';
   var CUT = [['A', 89.5], ['B', 79.5], ['C', 69.5], ['D', 59.5]];
   var $ = function (id) { return document.getElementById(id); };
+  var HOME = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;      // opened from the home-screen icon
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var get = function (k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
   var put = function (k, v) { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
@@ -317,6 +364,9 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
       el.innerHTML = '<div><b>☁️ Save your classes</b><p class="small muted">' + (SV.state === 'out' && SV.msg ? esc(SV.msg) + ' ' : '') + 'Sign in with your school Google account to keep your classes and see your progress on any device.</p></div>' +
         '<button class="btn g" id="gsign"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.9-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6C6.6 42.6 14.6 48 24 48z"/></svg>Sign in with Google</button>';
       $('gsign').onclick = function () { location.href = MAIN + '?app=signin&back=grade'; };
+      /* in the home-screen app the Google page can open outside it: it shows a 6-digit code to type here */
+      el.insertAdjacentHTML('beforeend', '<details class="small" style="flex-basis:100%"' + (HOME ? ' open' : '') + '><summary style="cursor:pointer"><b>I have a code from the Google page</b></summary><form id="gcode" class="wrow" style="margin-top:6px"><input id="gcodein" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" style="width:110px" aria-label="The 6-digit code"><button class="btn" type="submit">Sign in</button></form></details>');
+      $('gcode').onsubmit = function (ev) { ev.preventDefault(); var v = $('gcodein').value.replace(/\D/g, ''); if (v.length !== 6) { toast('Type the 6 numbers from the Google page.'); return; } claimCode(v); };
       return;
     }
     var s = { wait: 'Saving soon…', saving: 'Saving…', saved: '✓ Saved', loading: 'Loading your classes…', off: '⚠️ ' + SV.msg, err: '⚠️ Not saved: ' + SV.msg }[SV.state] || '✓ Saved';
@@ -827,12 +877,31 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border: 1px soli
 
   /* back from the Google sign-in page with a one-time code */
   var claim = /^#claim=(\d{6})$/.exec(location.hash);
-  paintAll();
-  if (claim) {
-    history.replaceState(null, '', location.pathname);
+  function claimCode(code) {
     SV.state = 'loading'; paintAcct();
-    call('api_appClaim', [claim[1]]).then(function (r) { put(TK, r.tok); if (!tok()) throw new Error('Use Sign in with Google to save your grades.'); toast('✓ Signed in'); return load(); }).catch(function (e) { put(TK, null); SV.state = 'out'; SV.msg = String((e && e.message) || e).replace(/^APPSIGNIN:\s*/, ''); paintAcct(); });
-  } else if (tok()) load();
+    call('api_appClaim', [code]).then(function (r) { put(TK, r.tok); if (!tok()) throw new Error('Use Sign in with Google to save your grades.'); toast('✓ Signed in'); return load(); }).catch(function (e) { put(TK, null); SV.state = 'out'; SV.msg = String((e && e.message) || e).replace(/^APPSIGNIN:\s*/, ''); paintAcct(); });
+  }
+  paintAll();
+  if (claim) { history.replaceState(null, '', location.pathname + location.search); claimCode(claim[1]); }
+  else if (tok()) load();
+})();
+</script>
+<script>      /* home-screen app: the steps (?help), Install now on Android Chrome, and the offline copy (sw.js) */
+(function () {
+  var bip = null, inst = document.getElementById('appstepsinst');
+  addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); bip = e; inst.hidden = false; });
+  addEventListener('appinstalled', function () { bip = null; inst.hidden = true; });
+  inst.onclick = function () { if (!bip) return; bip.prompt(); bip.userChoice.then(function () { bip = null; inst.hidden = true; }); };
+  var ua = navigator.userAgent || '', android = /Android/.test(ua);
+  var installed = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  if (installed) document.getElementById('phonebtn').hidden = true;
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+  if (!/[?&]help/.test(location.search)) return;
+  var box = document.getElementById('appsteps'); box.hidden = false;
+  function pick(p) { box.querySelectorAll('[data-for]').forEach(function (d) { d.hidden = d.getAttribute('data-for') !== p; }); box.querySelectorAll('.tabs button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-p') === p)); }); }
+  box.querySelectorAll('.tabs button').forEach(function (b) { b.onclick = function () { pick(b.getAttribute('data-p')); }; });
+  pick(android ? 'android' : 'ios');
+  document.getElementById('appstepsgo').onclick = function () { box.hidden = true; history.replaceState(null, '', location.pathname); };
 })();
 </script>
 </body>
