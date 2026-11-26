@@ -158,9 +158,51 @@ button { font: inherit; cursor: pointer; border: 0; }
 .res li.no { background: #F1EEF7; color: #6B6390; }
 .bigscore { font: 700 64px/1 Fredoka; }
 @media (max-width: 520px) { .deck { min-height: 120px; } .deck .em { font-size: 36px; } }
+/* 2026-11-25 the "put it on your phone" steps at ?help (Colleen: "include the who do you think you are how to install on a phone instructions like all the others have"); same look as asl.cool/study and /grade */
+#appsteps { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; background: #0B2A4E; color: #fff; font: 500 17px/1.5 "Nunito", system-ui, sans-serif;
+  padding: calc(env(safe-area-inset-top, 0px) + 24px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 32px) max(16px, env(safe-area-inset-left, 0px)) }
+#appsteps main { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px }
+#appsteps .top { display: flex; align-items: center; gap: 14px } #appsteps .top img { width: 72px; height: 72px; border-radius: 17px; box-shadow: 0 4px 14px rgba(0,0,0,.35) }
+#appsteps h1 { font: 700 28px/1.1 "Fredoka", system-ui, sans-serif; margin: 0; color: #fff } #appsteps .sub { margin: 2px 0 0; color: #C9D6EA; font-size: 15px }
+#appsteps .card2 { background: #12365F; border: 1px solid rgba(255,255,255,.18); border-radius: 18px; padding: 16px 18px }
+#appsteps h2 { font: 600 20px/1.2 "Fredoka", system-ui, sans-serif; margin: 0 0 10px; color: #fff }
+#appsteps ol { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 12px }
+#appsteps ol li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start }
+#appsteps ol li::before { content: counter(s); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 17px "Fredoka", sans-serif; color: #0B2A4E; background: #F6C24B }
+#appsteps ol li:nth-child(2)::before { background: #6FCB9F } #appsteps ol li:nth-child(3)::before { background: #A884E0 } #appsteps ol li:nth-child(4)::before { background: #5DB6F2 } #appsteps ol li:nth-child(5)::before { background: #F2766A }
+#appsteps .ic { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 28px; padding: 0 6px; border-radius: 8px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.18); font-weight: 800; vertical-align: middle }
+#appsteps .ic svg { width: 18px; height: 18px } #appsteps b.k { color: #F6C24B } #appsteps .note { color: #C9D6EA; font-size: 15px; margin: 10px 0 0 }
+#appsteps .go { display: block; width: 100%; border: 0; cursor: pointer; text-align: center; background: #5DB6F2; color: #0B2A4E; font: 700 20px "Fredoka", sans-serif; padding: 15px 18px; border-radius: 999px; box-shadow: 0 4px 0 #2F86C4 }
+#appsteps .tabs { display: flex; gap: 8px; margin-bottom: 12px }
+#appsteps .tabs button { flex: 1; font: 700 15px "Nunito", sans-serif; padding: 9px 6px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: transparent; color: #fff; cursor: pointer }
+#appsteps .tabs button[aria-pressed="true"] { background: #fff; color: #0B2A4E }
+#appsteps .stripes { display: flex; gap: 6px; justify-content: center } #appsteps .stripes i { width: 34px; height: 6px; border-radius: 9px }
 </style>
 </head>
 <body>
+<div id="appsteps" hidden><main>
+  <div class="top"><img src="icon-180.png" alt="" width="72" height="72"><div><h1>Who Do You Think You Are?</h1><p class="sub">Put it on your phone’s home screen</p></div></div>
+  <section class="card2">
+    <h2>Add the icon (one time)</h2>
+    <div class="tabs" role="group" aria-label="Your phone"><button type="button" data-p="ios" aria-pressed="false">iPhone</button><button type="button" data-p="android" aria-pressed="false">Android</button></div>
+    <div data-for="ios" hidden><ol>
+      <li><span>Open this page in <b class="k">Safari</b>.</span></li>
+      <li><span>Tap <b class="k">Share</b> <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> at the bottom of the screen. Don’t see it? Tap <span class="ic">•••</span> first.</span></li>
+      <li><span>Tap <b class="k">Add to Home Screen</b>. Don’t see it? Scroll down, or tap <b class="k">More</b> <span class="ic">•••</span>.</span></li>
+      <li><span>If you see <b class="k">Open as Web App</b>, leave it turned on.</span></li>
+      <li><span>Tap <b class="k">Add</b>. The Who Do You Think You Are? icon is now on your home screen.</span></li>
+    </ol></div>
+    <div data-for="android" hidden><button class="go" type="button" id="appstepsinst" hidden style="margin-bottom:12px">📲 Install now</button><ol>
+      <li><span>Open this page in <b class="k">Chrome</b>.</span></li>
+      <li><span>Tap the menu <span class="ic" aria-label="menu">⋮</span> at the top right.</span></li>
+      <li><span>Tap <b class="k">Install app</b> (it may say <b class="k">Add to Home screen</b>).</span></li>
+      <li><span>Tap <b class="k">Install</b> (or <b class="k">Add</b>). The Who Do You Think You Are? icon is now on your home screen.</span></li>
+    </ol></div>
+    <p class="note">Then open it from the icon. It opens full screen and sideways, with nothing in the way of the card on your forehead.</p>
+  </section>
+  <button class="go" type="button" id="appstepsgo">Go to the game</button>
+  <div class="stripes" aria-hidden="true"><i style="background:#F2766A"></i><i style="background:#F6C24B"></i><i style="background:#6FCB9F"></i><i style="background:#A884E0"></i><i style="background:#5DB6F2"></i></div>
+</main></div>
 <div class="wrap">
   <header class="top"><img class="logo" src="icon-192.png?v=4" alt="" aria-hidden="true"><div><h1>Who Do You<br><span>Think You Are?</span></h1><p class="sub">Phone on your forehead. Friends describe it in ASL. Tilt to answer.</p></div><a id="edit" href="/colleen/whoami" hidden style="margin-left:auto;background:var(--ink);color:#fff;border-radius:12px;padding:8px 12px;font-weight:800;text-decoration:none;white-space:nowrap">✏️ Edit decks</a></header>
 
@@ -169,7 +211,7 @@ button { font: inherit; cursor: pointer; border: 0; }
     <div class="rule"><span style="font-size:28px" aria-hidden="true">🤫</span><span><b>Voices off!</b> Your group describes the word in ASL: signs, fingerspelling, gestures, facial expressions. No talking, no mouthing the word.</span></div>
     <div id="decks" class="decks" aria-live="polite"><p class="note">Loading decks…</p></div>
     <button class="sgOpen" id="sgOpen"><span aria-hidden="true">💡</span><span><b>Got an idea?</b> Suggest a new card, or a whole new category</span><span aria-hidden="true">›</span></button>
-    <div class="homeTip" id="homeTip"><span style="font-size:30px" aria-hidden="true">📲</span><span><b>Best on a phone as an app:</b> <span id="homeHow"></span> It opens full screen, sideways, with nothing in the way.</span></div>
+    <div class="homeTip" id="homeTip"><span style="font-size:30px" aria-hidden="true">📲</span><span><b>Best on a phone as an app:</b> <span id="homeHow"></span> It opens full screen, sideways, with nothing in the way. <a href="?help" style="color:inherit;font-weight:800">Show me how</a></span></div>
   </section>
 
   <!-- mix your own (Colleen: "choose which decks get mixed in with checkboxes so that they don't get stuck doing a category they don't know") -->
@@ -427,19 +469,20 @@ function openReady() {
 /* ---------- the tilt ----------
    up = how much the screen faces the ceiling: +1 face up, -1 face down, 0 upright. It is the screen's own direction worked out from
    deviceorientation (beta, gamma), so it is the same held tall or sideways, on iPhone and Android. */
-const D = Math.PI / 180; let up = null, tiltOK = false, lastTilt = 0;
+const D = Math.PI / 180; let up = null, tiltOK = false, lastTilt = 0, tiltDenied = false;
 function onTilt(e) { if (e.beta === null || e.beta === undefined) return; up = Math.cos(e.beta * D) * Math.cos((e.gamma || 0) * D); lastTilt = Date.now(); tiltOK = true; }
 async function askTilt() {
-  try { if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') { const r = await DeviceOrientationEvent.requestPermission(); if (r !== 'granted') return false; } } catch (e) { return false; }
+  tiltDenied = false;
+  try { if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') { const r = await DeviceOrientationEvent.requestPermission(); if (r !== 'granted') { tiltDenied = true; return false; } } } catch (e) { tiltDenied = true; return false; }
   window.addEventListener('deviceorientation', onTilt);
-  await new Promise(r => setTimeout(r, 450)); return tiltOK;
+  for (let k = 0; k < 12 && !tiltOK; k++) await new Promise(r => setTimeout(r, 100)); return tiltOK;      /* 2026-11-25: up to 1.2 s for the phone's first tilt reading (was 0.45 s) */
 }
 
 /* ---------- card font (Colleen 2026-11-25: "i want to give people font options for the cards on both the phone and a laptop"). Saved on each device (ff-font).
    Only the card's name (and the Buzzer battle card) changes; menus stay as they are. */
 const FONTS = [['fredoka', 'Bubbly', 'Fredoka'], ['atkinson', 'Easy to read', '"Atkinson Hyperlegible"'], ['lilita', 'Chunky', '"Lilita One"'], ['bangers', 'Comic', 'Bangers'], ['marker', 'Marker', '"Permanent Marker"'],
   ['hand', 'Handwriting', '"Patrick Hand"'], ['bebas', 'Tall', '"Bebas Neue"'], ['type', 'Typewriter', '"Special Elite"'], ['book', 'Storybook', 'Merriweather']];
-let cardFont = FONTS.some(f => f[0] === get('ff-font')) ? get('ff-font') : 'fredoka';
+let cardFont = FONTS.some(f => f[0] === get('ff-font')) ? get('ff-font') : 'book';      /* 2026-11-25 Colleen: "default font should be storybook" */
 const fontOf = k => (FONTS.find(f => f[0] === k) || FONTS[0])[2];
 function applyFont() { document.documentElement.style.setProperty('--cardfont', fontOf(cardFont)); }
 function paintFonts() { const box = $('#fonts'); if (!box) return; box.innerHTML = FONTS.map(f => `<button class="chip fontchip${f[0] === cardFont ? ' on' : ''}" data-font="${f[0]}" style="font-family:${f[2].replace(/"/g, "'")}, sans-serif">${f[1]}</button>`).join(''); }
@@ -449,6 +492,9 @@ applyFont(); paintFonts();
 
 /* ---------- sounds (made here, no files) ---------- */
 let AC = null;
+/* 2026-11-25 Colleen: "my volume is up but i can't hear the demo sound when i click them on my phone". An iPhone on silent mutes web page sounds; asking for
+   "playback" (Safari 16.4+) lets the game's sounds play like a video does. Set before the sound engine starts. */
+try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
 function tone(f, t0, d, type, vol) { if (!AC) return; const o = AC.createOscillator(), g = AC.createGain(); o.type = type || 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, AC.currentTime + t0); g.gain.linearRampToValueAtTime(vol || .25, AC.currentTime + t0 + .01); g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + t0 + d); o.connect(g); g.connect(AC.destination); o.start(AC.currentTime + t0); o.stop(AC.currentTime + t0 + d + .05); }
 /* "Got it!" sounds (Colleen: "add a sound effect option for correct answers"), all made here, no sound files */
 function noise(t0, d, vol, lo, hi) { if (!AC) return; const n = Math.floor(AC.sampleRate * d), b = AC.createBuffer(1, n, AC.sampleRate), x = b.getChannelData(0); for (let i = 0; i < n; i++) x[i] = Math.random() * 2 - 1;
@@ -577,8 +623,12 @@ async function startRound() {
   try { if (navigator.wakeLock) wake = await navigator.wakeLock.request('screen'); } catch (e) {}
   const g = $('#game'); g.className = hasTilt ? 'on' : 'on taps'; $('#quit').textContent = secs ? '✕ End' : '✓ Done'; $('#quit').classList.toggle('done', !secs); g.style.background = deck.color || '#1B1340';
   $('#taps').classList.toggle('on', !hasTilt); $('#word').textContent = ''; $('#clock').textContent = ''; $('#score').textContent = ''; $('#bar').style.transform = 'scaleX(1)';
-  msg(hasTilt ? 'Put it on your forehead!' : 'Ready?', hasTilt ? 'Screen facing your group. Hold still…' : 'No tilt on this device: tap the buttons, or use the ↑ ↓ arrow keys.');
-  if (!hasTilt) setTimeout(countdown, 1600);
+  /* 2026-11-25 Colleen: "the tilting doesnt work at all on the app on my phone anymore. it also doesn't tell me to turn it sideways". When the phone said no to
+     motion (a new Home Screen icon asks again), say so and how to fix it, instead of quietly switching to buttons. */
+  if (hasTilt) msg('Put it on your forehead!', 'Screen facing your group. Hold still…');
+  else if (tiltDenied) msg('Tilt is turned off', 'Use the buttons for now. To turn tilt on: iPhone app on your Home Screen: remove it, add it again, and tap Allow when it asks about motion. In Safari: tap aA › Website Settings › Motion & Orientation Access › Allow, then reload.');
+  else msg('Ready?', 'No tilt on this device: tap the buttons, or use the ↑ ↓ arrow keys.');
+  if (!hasTilt) setTimeout(() => { if (R && !R.tilt) countdown(); }, tiltDenied ? 7000 : 1600);
   clearInterval(R.tk); R.tk = setInterval(loop, 40);      /* a timer, not requestAnimationFrame: it keeps checking the tilt even when the phone skips redraws */
 };
 function msg(t, small) { $('#msg').innerHTML = esc(t) + (small ? '<small>' + esc(small) + '</small>' : ''); $('#msg').style.display = t ? '' : 'none'; }
@@ -600,9 +650,11 @@ function fit() {
    white (only the white touching the edges) made see-through; a picture that is already transparent, or a photo with a real background, stays as it is.
    Pictures from other sites go through asl.cool/whoami/img so the browser may read them. Results are kept for the visit. */
 const CUT = new Map();
+let POSTERS = null; const posterPics = () => POSTERS || (POSTERS = new Set(DECKS.filter(d => /broadway|musical/i.test(d.name || '')).flatMap(d => Object.values(d.imgs || {}))));
 function loadImg(src) { return new Promise((ok, no) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => ok(im); im.onerror = no; im.src = src; }); }
 function cutout(url) {
   if (!url) return Promise.resolve(null); if (CUT.has(url)) return CUT.get(url);
+  if (posterPics().has(url)) return Promise.resolve({ src: url, cut: false });      /* 2026-11-25 Colleen: "don't remove white backgrounds on the broadway images because they're posters" */
   const job = (async () => {
     let im; try { im = await loadImg(url); } catch (e) { try { im = await loadImg('img?u=' + encodeURIComponent(url)); } catch (e2) { return { src: url, cut: false }; } }
     try {
@@ -643,6 +695,7 @@ function loop() {
   if (!R) return;
   const now = Date.now(), side = innerWidth >= innerHeight;
   $('#turn').classList.toggle('on', R.tilt && !side && R.phase !== 'over');
+  if (!R.tilt && tiltOK && !tiltDenied && R.phase === 'hold') { R.tilt = true; $('#game').className = 'on'; $('#taps').classList.remove('on'); msg('Put it on your forehead!', 'Screen facing your group. Hold still…'); }      /* the phone's tilt started late: switch to tilt */
   if (R.tilt && up !== null) {
     if (R.phase === 'hold') { if (side && Math.abs(up) < .4) { R.still = R.still || now; if (now - R.still > 700) countdown(); } else R.still = 0; }
     if (R.phase === 'play' && !R.busy && R.armed && now - R.shown > 300) $('#word').style.transform = 'rotateX(' + Math.max(-40, Math.min(40, up * 40)).toFixed(1) + 'deg)';      /* the card leans with the phone */
@@ -691,6 +744,20 @@ fetch('/colleen/flash-decks.json', { cache: 'no-store' }).then(r => { if (r.ok &
 /* phones: suggest adding it to the Home Screen, where it opens full screen (an iPhone can't go full screen in Safari) */
 try { const standalone = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone, ios = /iPhone|iPad|iPod/.test(navigator.userAgent), phone = ios || /Android/.test(navigator.userAgent);
   if (phone && !standalone) { $('#homeHow').innerHTML = ios ? 'tap <b>Share</b> <span aria-hidden="true">⬆️</span>, then <b>Add to Home Screen</b>.' : 'tap <b>⋮</b>, then <b>Add to Home screen</b> (or <b>Install app</b>).'; $('#homeTip').classList.add('on'); } } catch (e) {}
+})();
+</script>
+<script>      /* 2026-11-25 the steps at ?help, and Install now on Android Chrome */
+(function () {
+  var bip = null, inst = document.getElementById('appstepsinst');
+  addEventListener('beforeinstallprompt', function (e) { bip = e; inst.hidden = false; });
+  addEventListener('appinstalled', function () { bip = null; inst.hidden = true; });
+  inst.onclick = function () { var e = bip || (typeof instEv !== 'undefined' && instEv); if (!e) return; e.prompt(); e.userChoice.then(function () { bip = null; inst.hidden = true; }); };
+  if (!/[?&]help/.test(location.search)) return;
+  var box = document.getElementById('appsteps'); box.hidden = false;
+  function pick(p) { box.querySelectorAll('[data-for]').forEach(function (d) { d.hidden = d.getAttribute('data-for') !== p; }); box.querySelectorAll('.tabs button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-p') === p)); }); }
+  box.querySelectorAll('.tabs button').forEach(function (b) { b.onclick = function () { pick(b.getAttribute('data-p')); }; });
+  pick(/Android/.test(navigator.userAgent || '') ? 'android' : 'ios');
+  document.getElementById('appstepsgo').onclick = function () { box.hidden = true; history.replaceState(null, '', location.pathname); };
 })();
 </script>
 </body>
