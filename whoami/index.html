@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Who Do You Think You Are?">
 <title>Who Do You Think You Are?</title>
 <link rel="icon" type="image/png" href="../img/logo-512.png">
-<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" href="icon-180.png?v=3">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
@@ -26,7 +26,7 @@ h1, h2, .big { font-family: Fredoka, Nunito, system-ui, sans-serif; }
 button { font: inherit; cursor: pointer; border: 0; }
 .wrap { max-width: 980px; margin: 0 auto; padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
 .top { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
-.logo { width: 54px; height: 54px; border-radius: 16px; background: var(--ink); display: grid; place-items: center; font-size: 30px; transform: rotate(-6deg); box-shadow: 0 4px 0 #0d0926; }
+.logo { width: 58px; height: 58px; border-radius: 16px; display: block; flex: none; transform: rotate(-6deg); box-shadow: 0 4px 0 #0d0926; }      /* 2026-11-25 her new logo */
 .top h1 { margin: 0; font-size: clamp(28px, 6vw, 42px); letter-spacing: .5px; line-height: 1; }
 .top h1 span { color: #E91E63; }
 .sub { margin: 2px 0 0; color: var(--muted); font-weight: 700; font-size: 15px; }
@@ -162,7 +162,7 @@ button { font: inherit; cursor: pointer; border: 0; }
 </head>
 <body>
 <div class="wrap">
-  <header class="top"><div class="logo" aria-hidden="true">🤟</div><div><h1>Who Do You<br><span>Think You Are?</span></h1><p class="sub">Phone on your forehead. Friends describe it in ASL. Tilt to answer.</p></div><a id="edit" href="/colleen/whoami" hidden style="margin-left:auto;background:var(--ink);color:#fff;border-radius:12px;padding:8px 12px;font-weight:800;text-decoration:none;white-space:nowrap">✏️ Edit decks</a></header>
+  <header class="top"><img class="logo" src="icon-192.png?v=3" alt="" aria-hidden="true"><div><h1>Who Do You<br><span>Think You Are?</span></h1><p class="sub">Phone on your forehead. Friends describe it in ASL. Tilt to answer.</p></div><a id="edit" href="/colleen/whoami" hidden style="margin-left:auto;background:var(--ink);color:#fff;border-radius:12px;padding:8px 12px;font-weight:800;text-decoration:none;white-space:nowrap">✏️ Edit decks</a></header>
 
   <!-- 1. pick a deck -->
   <section id="pick" class="screen on">
